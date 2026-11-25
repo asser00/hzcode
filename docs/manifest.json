@@ -1,0 +1,836 @@
+{
+    "project":  {
+                    "name":  "horde-soldiers-v2",
+                    "modId":  "horde_soldiers",
+                    "version":  "2.0.1",
+                    "minecraft":  "1.20.1",
+                    "forge":  "47.4.28",
+                    "java":  17,
+                    "loader":  "javafml",
+                    "hardDependency":  "tacz 1.2.0 (mandatory in mods.toml)",
+                    "principle":  "ONE BRAIN. MULTIPLE BODIES. SHARED STRATEGY. INDEPENDENT EXECUTION.",
+                    "summary":  "Forge mod: hordes of zombies/soldiers/scavengers/terrorists; one strategic HordeController per horde, followers read shared state + formation slots."
+                },
+    "entryPoints":  [
+                        "com.nox.horde_soldiers.HordeSoldiersMod (@Mod horde_soldiers)"
+                    ],
+    "build":  {
+                  "offline":  "powershell -File build-offline.ps1",
+                  "gradleOffline":  "gradle --offline build | gradle --offline logicTest",
+                  "outputJar":  "build/libs/horde_soldiers-2.0.1.jar",
+                  "tests":  "com.nox.horde_soldiers.test.LogicTests - 130 checks, headless bootstrap via reflection"
+              },
+    "commands":  [
+                     "/horde start",
+                     "/horde stop",
+                     "/horde status",
+                     "/horde list",
+                     "/horde wave [count]",
+                     "/horde spawn \u003csoldier|scavenger|zombie|terrorist\u003e [count]",
+                     "/horde order \u003c9 orders\u003e [radius]",
+                     "/horde dismiss [radius]"
+                 ],
+    "configGroups":  [
+                         "general",
+                         "horde",
+                         "zombie",
+                         "soldier",
+                         "scavenger",
+                         "terrorist",
+                         "factions",
+                         "taming"
+                     ],
+    "dataFlow":  "EntityJoinLevel -\u003e HordeRegistry.attach -\u003e HordeController (leader strategy, throttled) -\u003e HordeData (persisted via HordeSavedData + HordeLink NBT) -\u003e follower goals -\u003e guarded world edits (LootTransfer, ZombieBreachRules)",
+    "files":  [
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/HordeSoldiersMod.java",
+                      "role":  "entrypoint",
+                      "description":  "Forge @Mod entry point: registers config, entities, capabilities, creative-tab listener, event listeners (commands, entity join, death, server tick/stop, wave manager)."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/client/ClientModEvents.java",
+                      "role":  "client",
+                      "description":  "Entity renderer registration; per-type skin pools (textures/entity/skins/\u003ctype\u003e/), skin picked deterministically from the entity UUID (SkinVariant)."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/commands/ModCommands.java",
+                      "role":  "command",
+                      "description":  "/horde start|stop|status|list|wave|spawn \u003ctype\u003e [count]|order \u003corder\u003e [radius]|dismiss [radius]. Orders apply to HordeControllers only."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/config/ModConfig.java",
+                      "role":  "config",
+                      "description":  "ForgeConfigSpec COMMON spec: general/wave, horde engine intervals, zombie breach rules, per-type stats + naturalSpawn + randomWeapons flags, faction overrides, taming (enabled/item/chance)."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/AbstractHordeMob.java",
+                      "role":  "entity-base",
+                      "description":  "PathfinderMob base for humanoid members: HordeLink + persisted 27-slot ItemStackHandler capability + ITameableHorde owner (NBT-persisted); never despawns while in a horde or tamed."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/IHordeEntity.java",
+                      "role":  "interface",
+                      "description":  "Horde membership contract: hordeId, leader flag, HordeType."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/ITameableHorde.java",
+                      "role":  "interface",
+                      "description":  "Taming contract: isTamed/getOwnerUUID/setTamed."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/MedicEntity.java",
+                      "role":  "entity",
+                      "description":  "Medic healer: never fights, heals friendly entities in an aura (HealAlliesGoal), medic skin pool, tameable."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/ModEntities.java",
+                      "role":  "registry",
+                      "description":  "DeferredRegister: 4 entity types + 4 spawn eggs (also added to the vanilla Spawn Eggs creative tab) + attributes."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/ScavengerEntity.java",
+                      "role":  "entity",
+                      "description":  "Looter: spawns with a random melee weapon, retreat defense + leader-assigned loot via LootContainerGoal, tamable."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/SkinVariant.java",
+                      "role":  "pure-logic",
+                      "description":  "Deterministic per-UUID skin index + skin texture path; unit-tested."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/SoldierEntity.java",
+                      "role":  "entity",
+                      "description":  "Armed soldier: random rifle-class TACZ gun + matched ammo (or fixed config gun), SoldierTaczCombatGoal, tamable (follow/defend owner)."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/TerroristEntity.java",
+                      "role":  "entity",
+                      "description":  "Hostile raider: random TACZ gun (any class) + matched ammo when terroristsUseGuns, melee fallback."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/ZombieEntity.java",
+                      "role":  "entity",
+                      "description":  "Horde zombie: breach goal, faction targeting, config health/damage, isSunSensitive() override, vanilla door-breaking disabled so all breaching goes through ZombieBreachRules."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/ai/goal/FactionTargetGoal.java",
+                      "role":  "ai-goal",
+                      "description":  "Target selector restricted to FactionManager-hostile entities; followers defer to the shared controller target."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/ai/goal/HealAlliesGoal.java",
+                      "role":  "ai-goal",
+                      "description":  "Medic heal aura: heals + regenerates allies/owner in radius on an interval."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/ai/goal/HordeFollowerGoal.java",
+                      "role":  "ai-goal",
+                      "description":  "Follower movement toward the published formation slot; budgeted recovery path only when stuck/separated."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/ai/goal/LootContainerGoal.java",
+                      "role":  "ai-goal",
+                      "description":  "Paths to leader-assigned loot container, runs LootTransfer (simulate-first, lossless)."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/ai/goal/ScavengerDefenseGoal.java",
+                      "role":  "ai-goal",
+                      "description":  "Flees nearest hostile when health below scavengerRetreatThreshold %."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/ai/goal/ScavengerWorkGoal.java",
+                      "role":  "ai-goal",
+                      "description":  "Tamed scavengers go to work (disappear 5 min, return with loot) when owner is near and no hostiles."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/ai/goal/SoldierTaczCombatGoal.java",
+                      "role":  "ai-goal",
+                      "description":  "TACZ combat: aim/shoot with computed yaw-pitch, reload from own inventory, strafing; respects CEASE_FIRE/RETREAT."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/ai/goal/TamedFollowGoal.java",
+                      "role":  "ai-goal",
+                      "description":  "Tamed mobs follow their owner (move/look flags); no-op when wild."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/ai/goal/TamedOwnerDefenseGoal.java",
+                      "role":  "ai-goal",
+                      "description":  "Tamed mobs target whoever last hurt their owner (or whom the owner last hurt)."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/ai/goal/ZombieBreachGoal.java",
+                      "role":  "ai-goal",
+                      "description":  "Breacher-only mining of the shared breach target; holds a per-dimension breach slot; re-validates rules every tick."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/entities/ai/goal/ZombieBreachRules.java",
+                      "role":  "rules",
+                      "description":  "Central breach rules: breachEnabled, mobGriefing, whitelist/blacklist, pickaxe-for-stone."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/equipment/WeaponStocker.java",
+                      "role":  "equipment",
+                      "description":  "Random weapon provisioning: melee pool (swords/axes/tridents/melee-named mod items with attack damage), random TACZ guns (rifle-only or any), ammo matched via IAmmo.isAmmoOfGun. Pure matchers unit-tested."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/event/ModEvents.java",
+                      "role":  "events",
+                      "description":  "Forge event wiring: attributes, capabilities, commands, entity join (re-attach), death (detach), server tick, server stopping, taming interact (PlayerInteractEvent.EntityInteract)."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/faction/Faction.java",
+                      "role":  "enum",
+                      "description":  "PLAYER, SOLDIER, ZOMBIE, SCAVENGER, TERRORIST."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/faction/FactionManager.java",
+                      "role":  "faction",
+                      "description":  "MC-aware facade: entity-\u003efaction mapping, config overrides, tamed-owner ALLIED overrides, all hostility checks."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/faction/FactionRelation.java",
+                      "role":  "enum",
+                      "description":  "ALLIED/NEUTRAL/HOSTILE + lenient parse()."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/faction/FactionRelations.java",
+                      "role":  "pure-logic",
+                      "description":  "Pure symmetric relation matrix with runtime overrides; unit-tested."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/FormationManager.java",
+                      "role":  "pure-logic",
+                      "description":  "Stable slot assignment: UUID-sorted, leader slot 0, others unique 1..n-1 (collision fixed)."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/FormationMath.java",
+                      "role":  "pure-logic",
+                      "description":  "Pure formation offset math for 4 types; unit-tested."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/FormationSlot.java",
+                      "role":  "pure-logic",
+                      "description":  "Slot = index + offset + world pos; NBT-persisted."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/FormationType.java",
+                      "role":  "enum",
+                      "description":  "FOLLOW_TRAIL/PROTECT_LEADER/COMBAT_SPREAD/HOLD_POSITION."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/HordeController.java",
+                      "role":  "core",
+                      "description":  "ONE strategic brain per horde: throttled targeting, orders, formation, primary path (leaderPathInterval), loot scan, breach designation; UUID-only state."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/HordeData.java",
+                      "role":  "core",
+                      "description":  "Serializable shared horde state + NBT round-trip."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/HordeLink.java",
+                      "role":  "core",
+                      "description":  "Per-entity membership holder persisted in entity NBT."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/HordeManager.java",
+                      "role":  "core",
+                      "description":  "Timed wave event: zombie hordes near random overworld players; size = zombieHordeSize + min(cap, wave/2*growth); spawnCap per dimension."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/HordeMember.java",
+                      "role":  "core",
+                      "description":  "Per-member record: role, slot, stuck/separated detection, path cooldown, dormancy; NBT-persisted."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/HordeNavigation.java",
+                      "role":  "core",
+                      "description":  "Hybrid navigation helpers: slot correction + budgeted/cooldown recovery pathing."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/HordeOrder.java",
+                      "role":  "enum",
+                      "description":  "9 orders + parse()."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/HordeRegistry.java",
+                      "role":  "core",
+                      "description":  "Per-dimension registry: one controller per horde, entity index, breach counter, path budget, batched saves (saveInterval). Never force-loads chunks."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/HordeSavedData.java",
+                      "role":  "persistence",
+                      "description":  "SavedData storing horde states + entity index."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/HordeSpawner.java",
+                      "role":  "core",
+                      "description":  "Group spawn: leader+followers in one controller, stable slots, faction init, TACZ provisioning, breacher designation; no orphans."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/HordeState.java",
+                      "role":  "enum",
+                      "description":  "IDLE/ACTIVE/COMBAT/RETREATING/DISBANDING."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/HordeType.java",
+                      "role":  "enum",
+                      "description":  "4 horde types mapped to factions + parse()."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/LeaderElection.java",
+                      "role":  "pure-logic",
+                      "description":  "Deterministic leader election (leader flag \u003e health \u003e age, UUID tiebreak); unit-tested."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/LootTransfer.java",
+                      "role":  "pure-logic",
+                      "description":  "Lossless container-\u003einventory transfer: simulated probe insert (duplication bug fixed), real extract only for what fits, remainder put back/dropped."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/MemberState.java",
+                      "role":  "enum",
+                      "description":  "ACTIVE/STUCK/SEPARATED/COMBAT/RETREATING/IDLE."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/horde/ScavengerWorkManager.java",
+                      "role":  "core",
+                      "description":  "Work-trip scheduler: pending workers, 5-min duration, loot generation, SavedData persistence, return-to-owner."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/items/ModItems.java",
+                      "role":  "registry",
+                      "description":  "Mod items + creative tab: taming_treat, war_horn, support_call_1..5, tab Horde Soldiers (HZCODE)."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/items/SupportCallItem.java",
+                      "role":  "item",
+                      "description":  "Support Call xN: right-click spawns a soldier horde of size N at the player."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/items/WarHornItem.java",
+                      "role":  "item",
+                      "description":  "Horde War Horn: right-click starts/stops the timed horde event."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/structure/HordeCampPiece.java",
+                      "role":  "structure",
+                      "description":  "Places the camp blocks: 9x9 plank/cobble platform, corner fences + torch, campfire, loot chest/barrel (chests/horde_camp loot table)."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/structure/HordeCampStructure.java",
+                      "role":  "structure",
+                      "description":  "Horde camp structure: picks a surface point per chunk, returns a GenerationStub with one HordeCampPiece."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/structure/ModStructures.java",
+                      "role":  "registry",
+                      "description":  "DeferredRegister: structure type hzcode:horde_camp + its piece type."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/tacz/TacZAdapter.java",
+                      "role":  "integration",
+                      "description":  "TACZ API bridge (IGunOperator/IGun/IAmmo): equipSoldier, aim/shoot/reload, ammo matching; safe no-ops without TACZ."
+                  },
+                  {
+                      "path":  "src/main/java/com/nox/horde_soldiers/worldgen/ModSpawnPlacements.java",
+                      "role":  "worldgen",
+                      "description":  "Registers ON_GROUND spawn placements for all 4 types in common setup; config-gated (naturalSpawn), vanilla monster rules for zombies."
+                  },
+                  {
+                      "path":  "src/main/resources/pack.mcmeta",
+                      "role":  "resource",
+                      "description":  "Resource pack descriptor."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/lang/en_us.json",
+                      "role":  "resource",
+                      "description":  "Lang: entities, 4 spawn eggs, commands, all config keys."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/models/item/medic_spawn_egg.json",
+                      "role":  "resource",
+                      "description":  "Spawn-egg item model JSON."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/models/item/scavenger_spawn_egg.json",
+                      "role":  "resource",
+                      "description":  "Spawn-egg item model JSON."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/models/item/soldier_spawn_egg.json",
+                      "role":  "resource",
+                      "description":  "Spawn-egg item model JSON."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/models/item/support_call_1.json",
+                      "role":  "resource",
+                      "description":  "Spawn-egg item model JSON."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/models/item/support_call_2.json",
+                      "role":  "resource",
+                      "description":  "Spawn-egg item model JSON."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/models/item/support_call_3.json",
+                      "role":  "resource",
+                      "description":  "Spawn-egg item model JSON."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/models/item/support_call_4.json",
+                      "role":  "resource",
+                      "description":  "Spawn-egg item model JSON."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/models/item/support_call_5.json",
+                      "role":  "resource",
+                      "description":  "Spawn-egg item model JSON."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/models/item/taming_treat.json",
+                      "role":  "resource",
+                      "description":  "Spawn-egg item model JSON."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/models/item/terrorist_spawn_egg.json",
+                      "role":  "resource",
+                      "description":  "Spawn-egg item model JSON."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/models/item/war_horn.json",
+                      "role":  "resource",
+                      "description":  "Spawn-egg item model JSON."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/models/item/zombie_spawn_egg.json",
+                      "role":  "resource",
+                      "description":  "Spawn-egg item model JSON."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/scavenger.png",
+                      "role":  "resource",
+                      "description":  "64x64 entity texture PNG."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/soldier_biker.png",
+                      "role":  "resource",
+                      "description":  "64x64 entity texture PNG."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/soldier_medic.png",
+                      "role":  "resource",
+                      "description":  "64x64 entity texture PNG."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/terrorist.png",
+                      "role":  "resource",
+                      "description":  "64x64 entity texture PNG."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/zombie.png",
+                      "role":  "resource",
+                      "description":  "64x64 entity texture PNG."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/medic/0.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/medic/1.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/medic/2.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/medic/3.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/scavenger/0.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/scavenger/1.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/scavenger/2.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/scavenger/3.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/scavenger/4.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/scavenger/5.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/scavenger/6.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/scavenger/7.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/soldier/0.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/soldier/1.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/soldier/2.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/soldier/3.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/soldier/4.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/soldier/5.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/terrorist/0.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/terrorist/1.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/terrorist/2.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/terrorist/3.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/terrorist/4.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/terrorist/5.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/terrorist/6.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/terrorist/7.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/zombie/0.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/zombie/1.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/zombie/2.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/zombie/3.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/entity/skins/zombie/4.png",
+                      "role":  "resource",
+                      "description":  "64x64 skin PNG pool per entity type (internet player skins + textures reused from modpack jars); picked per-entity by UUID."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/item/support_call_1.png",
+                      "role":  "resource",
+                      "description":  "16x16 item icon PNG (generated)."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/item/support_call_2.png",
+                      "role":  "resource",
+                      "description":  "16x16 item icon PNG (generated)."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/item/support_call_3.png",
+                      "role":  "resource",
+                      "description":  "16x16 item icon PNG (generated)."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/item/support_call_4.png",
+                      "role":  "resource",
+                      "description":  "16x16 item icon PNG (generated)."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/item/support_call_5.png",
+                      "role":  "resource",
+                      "description":  "16x16 item icon PNG (generated)."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/item/taming_treat.png",
+                      "role":  "resource",
+                      "description":  "16x16 item icon PNG (generated)."
+                  },
+                  {
+                      "path":  "src/main/resources/assets/hzcode/textures/item/war_horn.png",
+                      "role":  "resource",
+                      "description":  "16x16 item icon PNG (generated)."
+                  },
+                  {
+                      "path":  "src/main/resources/data/hzcode/loot_tables/chests/horde_camp.json",
+                      "role":  "resource",
+                      "description":  "Loot table for the horde camp chest/barrel."
+                  },
+                  {
+                      "path":  "src/main/resources/data/hzcode/tags/entity_types/horde_mobs.json",
+                      "role":  "resource",
+                      "description":  "Entity-type tag grouping all horde mobs."
+                  },
+                  {
+                      "path":  "src/main/resources/data/hzcode/tags/entity_types/medic_units.json",
+                      "role":  "resource",
+                      "description":  "Entity-type tag listing this mod\u0027s units."
+                  },
+                  {
+                      "path":  "src/main/resources/data/hzcode/tags/entity_types/scavenger_units.json",
+                      "role":  "resource",
+                      "description":  "Entity-type tag listing this mod\u0027s units."
+                  },
+                  {
+                      "path":  "src/main/resources/data/hzcode/tags/entity_types/soldier_units.json",
+                      "role":  "resource",
+                      "description":  "Entity-type tag listing this mod\u0027s units."
+                  },
+                  {
+                      "path":  "src/main/resources/data/hzcode/tags/entity_types/terrorist_units.json",
+                      "role":  "resource",
+                      "description":  "Entity-type tag listing this mod\u0027s units."
+                  },
+                  {
+                      "path":  "src/main/resources/data/hzcode/tags/entity_types/zombie_units.json",
+                      "role":  "resource",
+                      "description":  "Entity-type tag listing this mod\u0027s units."
+                  },
+                  {
+                      "path":  "src/main/resources/data/hzcode/worldgen/biome_modifier/add_medic_spawns.json",
+                      "role":  "resource",
+                      "description":  "forge:add_spawns biome modifier adding this mob type to overworld natural spawning."
+                  },
+                  {
+                      "path":  "src/main/resources/data/hzcode/worldgen/biome_modifier/add_scavenger_spawns.json",
+                      "role":  "resource",
+                      "description":  "forge:add_spawns biome modifier adding this mob type to overworld natural spawning."
+                  },
+                  {
+                      "path":  "src/main/resources/data/hzcode/worldgen/biome_modifier/add_soldier_spawns.json",
+                      "role":  "resource",
+                      "description":  "forge:add_spawns biome modifier adding this mob type to overworld natural spawning."
+                  },
+                  {
+                      "path":  "src/main/resources/data/hzcode/worldgen/biome_modifier/add_terrorist_spawns.json",
+                      "role":  "resource",
+                      "description":  "forge:add_spawns biome modifier adding this mob type to overworld natural spawning."
+                  },
+                  {
+                      "path":  "src/main/resources/data/hzcode/worldgen/biome_modifier/add_zombie_spawns.json",
+                      "role":  "resource",
+                      "description":  "forge:add_spawns biome modifier adding this mob type to overworld natural spawning."
+                  },
+                  {
+                      "path":  "src/main/resources/data/hzcode/worldgen/structure/horde_camp.json",
+                      "role":  "resource",
+                      "description":  "worldgen/structure JSON: biome filter + decoration step for the code-registered structure type."
+                  },
+                  {
+                      "path":  "src/main/resources/data/hzcode/worldgen/structure_set/horde_camp.json",
+                      "role":  "resource",
+                      "description":  "worldgen/structure_set JSON: random_spread placement (spacing/separation/salt) for the structure."
+                  },
+                  {
+                      "path":  "src/main/resources/META-INF/mods.toml",
+                      "role":  "resource",
+                      "description":  "Mod metadata; forge + minecraft + mandatory tacz [1.2.0,) AFTER."
+                  },
+                  {
+                      "path":  "src/test/java/com/nox/horde_soldiers/test/LogicTests.java",
+                      "role":  "test",
+                      "description":  "130-check offline suite (gradle logicTest / build-offline.ps1); headless registry bootstrap via reflection on Bootstrap.isBootstrapped."
+                  },
+                  {
+                      "path":  "docs/CRASH-FIX-2026-11-20.md",
+                      "role":  "doc",
+                      "description":  "Full root-cause write-up of the 2026-11-20 instant-crash fixes (BOM, reobf, FMLModType, spawn eggs) + verification evidence."
+                  },
+                  {
+                      "path":  "docs/FEATURES-2026-11-23.md",
+                      "role":  "doc",
+                      "description":  "Skins, random weapons, taming, natural spawning, horde_camp structure: what was added, config keys, in-game test script."
+                  },
+                  {
+                      "path":  "docs/FEATURES-2026-11-24.md",
+                      "role":  "doc",
+                      "description":  "2026-11-24 build (HZCODE.jar): fixes + skins/taming/trading/tab items/support calls/natural spawning/structure."
+                  },
+                  {
+                      "path":  "docs/FEATURES-2026-11-25.md",
+                      "role":  "doc",
+                      "description":  "2026-11-25 build: mod id hzcode (HZCODE.jar), trading, weapon swap, medic, scavenger work, zombie hostility."
+                  },
+                  {
+                      "path":  "docs/FILE_MAP.md",
+                      "role":  "docs",
+                      "description":  "Human-readable file map generated from docs/manifest.json."
+                  },
+                  {
+                      "path":  "docs/manifest.json",
+                      "role":  "docs",
+                      "description":  "Machine-readable project manifest generated by tools/gen_docs.ps1 (this file list + metadata + commands + config + data flow)."
+                  },
+                  {
+                      "path":  "docs/TEST_ENV.md",
+                      "role":  "docs",
+                      "description":  "Install/launch/test/benchmark guide for the Apocalypssia instances + in-sandbox verification results."
+                  },
+                  {
+                      "path":  "dist/apocalypssia/check-log.ps1",
+                      "role":  "deploy",
+                      "description":  "Greps an instance logs/latest.log for horde_soldiers load lines and errors."
+                  },
+                  {
+                      "path":  "dist/apocalypssia/install.ps1",
+                      "role":  "deploy",
+                      "description":  "Installs horde_soldiers-2.0.1.jar into a chosen Apocalypssia instance, disables older horde_soldiers jars, verifies TACZ, deploys config preset."
+                  },
+                  {
+                      "path":  "dist/apocalypssia/test-commands.txt",
+                      "role":  "deploy",
+                      "description":  "Paste-ready in-game /horde test script."
+                  },
+                  {
+                      "path":  "dist/apocalypssia/config/horde_soldiers-common.toml",
+                      "role":  "deploy",
+                      "description":  "Test config preset (defaults, waveInterval=120) deployed to \u003cinstance\u003e\\minecraft\\config."
+                  },
+                  {
+                      "path":  "dist/apocalypssia/mods/horde_soldiers-2.0.1.jar",
+                      "role":  "deploy",
+                      "description":  "Staged release jar for deployment into instance mods dirs."
+                  },
+                  {
+                      "path":  "dist/apocalypssia/mods/hzcode-2.0.1.jar",
+                      "role":  "deploy",
+                      "description":  "Production mod jar under its mod-id name (installed as HZCODE.jar)."
+                  },
+                  {
+                      "path":  "dist/apocalypssia/mods/HZCODE.jar",
+                      "role":  "deploy",
+                      "description":  "Production mod jar under the user-requested name HZCODE.jar."
+                  },
+                  {
+                      "path":  "tools/gen_docs.ps1",
+                      "role":  "tools",
+                      "description":  "Regenerates docs/manifest.json + docs/FILE_MAP.md; fails if any tracked file is undocumented."
+                  },
+                  {
+                      "path":  "tools/run-tests.ps1",
+                      "role":  "tools",
+                      "description":  "One-command offline debug/test: jar smoke test (classes, mods.toml, tacz dep, spawn-egg models) + LogicTests 111 checks."
+                  },
+                  {
+                      "path":  "build.gradle",
+                      "role":  "build",
+                      "description":  "ForgeGradle 6.0.54, Java 17, deps on forge + libs/tacz jar; logicTest task; jar manifest; processResources expansion."
+                  },
+                  {
+                      "path":  "settings.gradle",
+                      "role":  "build",
+                      "description":  "Root project name + plugin repositories."
+                  },
+                  {
+                      "path":  "gradle.properties",
+                      "role":  "build",
+                      "description":  "Mod metadata tokens (mod_id, mod_version=2.0.1, ranges) consumed by build.gradle."
+                  },
+                  {
+                      "path":  "build-offline.ps1",
+                      "role":  "build",
+                      "description":  "Offline build: javac --release 17 vs cached jars, jars build/libs/horde_soldiers-2.0.1.jar, runs LogicTests."
+                  },
+                  {
+                      "path":  "build_classpath.txt",
+                      "role":  "build",
+                      "description":  "Recorded classpath for offline compilation."
+                  },
+                  {
+                      "path":  "README.md",
+                      "role":  "docs",
+                      "description":  "Architecture overview, config reference, build instructions."
+                  },
+                  {
+                      "path":  "RECAP.md",
+                      "role":  "docs",
+                      "description":  "Session recap: what was built, defects fixed vs 1.0.0, continuation logs."
+                  },
+                  {
+                      "path":  "VERIFICATION.md",
+                      "role":  "docs",
+                      "description":  "Per-item verification status, environment blockers, benchmark procedure."
+                  },
+                  {
+                      "path":  "libs/tacz-1.20.1-1.2.0.jar",
+                      "role":  "dependency",
+                      "description":  "TACZ 1.2.0 mod jar (hard dependency), compiled against directly."
+                  },
+                  {
+                      "path":  ".testenv/workspace/",
+                      "role":  "test-env",
+                      "description":  "~4.8GB local offline copy of the E: launcher data (Apocalypssia-4.94 instance + libraries + meta, no downloads) plus a 66MB minimal Apocalypssia-small debug instance (tacz + horde_soldiers-2.0.1 only). Mod installed; old jars disabled. Excluded from per-file listing."
+                  }
+              ]
+}
