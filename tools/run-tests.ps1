@@ -35,9 +35,9 @@ if ($tomlBytes.Length -ge 3 -and $tomlBytes[0] -eq 0xEF -and $tomlBytes[1] -eq 0
 Write-Output 'mods.toml OK (expanded, version 2.0.1, tacz mandatory, no BOM)'
 # production jar must be reobfuscated mojmap->SRG (the game runs with SRG names) and must not
 # carry an FMLModType manifest attribute (forgespi 7.0.1 rejects Type.GAME during mod scan)
-& "$jdk\jar.exe" xf $jar META-INF/MANIFEST.MF 'com\nox\horde_soldiers\entities\ModEntities.class'
+& "$jdk\jar.exe" xf $jar META-INF/MANIFEST.MF 'com\nox\hzcode\entities\ModEntities.class'
 if (Select-String -Path (Join-Path $tmp 'META-INF\MANIFEST.MF') -Pattern 'FMLModType' -Quiet) { throw 'jar manifest contains FMLModType - forgespi 7.0.1 crashes on it (No enum constant IModFile$Type.GAME)' }
-$bc = & "$jdk\javap.exe" -c -p (Join-Path $tmp 'com\nox\horde_soldiers\entities\ModEntities.class')
+$bc = & "$jdk\javap.exe" -c -p (Join-Path $tmp 'com\nox\hzcode\entities\ModEntities.class')
 if (-not ($bc -match 'EntityType\$Builder\.m_20704_')) { throw 'jar is not reobfuscated to SRG (m_20704_ missing) - installing it crashes with NoSuchMethodError' }
 if ($bc -match 'EntityType\$Builder\.of:') { throw 'jar still contains mojmap call Builder.of - not reobfuscated' }
 Write-Output 'reobf OK (SRG m_20704_ present, no mojmap Builder.of), manifest has no FMLModType'
@@ -50,7 +50,7 @@ $fastutil = $jars | Where-Object { $_ -match 'fastutil-8.5.9.jar$' }
 $jars = @($fastutil) + ($jars | Where-Object { $_ -ne $fastutil })
 $cp = (@((Join-Path $root 'build\test-classes'), $devJar) + $jars) -join ';'
 $ErrorActionPreference = 'Continue'
-& "$jdk\java.exe" -cp $cp com.nox.horde_soldiers.test.LogicTests 2>$null | Select-String -Pattern 'FAIL|SKIP|LogicTests:'
+& "$jdk\java.exe" -cp $cp com.nox.hzcode.test.LogicTests 2>$null | Select-String -Pattern 'FAIL|SKIP|LogicTests:'
 if ($LASTEXITCODE -ne 0) { $ErrorActionPreference = 'Stop'; throw "LogicTests failed (exit $LASTEXITCODE)" }
 $ErrorActionPreference = 'Stop'
 if ($LASTEXITCODE -ne 0) { throw "LogicTests failed (exit $LASTEXITCODE)" }

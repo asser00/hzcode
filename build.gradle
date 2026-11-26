@@ -56,7 +56,7 @@ tasks.register('logicTest', JavaExec) {
     description = 'Runs dependency-free logic unit tests (formation math, faction matrix, orders, leader election, safe loot transfer).'
     dependsOn tasks.named('compileTestJava')
     classpath = sourceSets.test.runtimeClasspath
-    mainClass = 'com.nox.horde_soldiers.test.LogicTests'
+    mainClass = 'com.nox.hzcode.test.LogicTests'
 }
 
 tasks.named('check') { dependsOn tasks.named('logicTest') }

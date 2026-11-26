@@ -12,13 +12,13 @@
                     "summary":  "Forge mod: hordes of zombies/soldiers/scavengers/terrorists; one strategic HordeController per horde, followers read shared state + formation slots."
                 },
     "entryPoints":  [
-                        "com.nox.horde_soldiers.HordeSoldiersMod (@Mod horde_soldiers)"
+                        "com.nox.hzcode.HordeSoldiersMod (@Mod horde_soldiers)"
                     ],
     "build":  {
                   "offline":  "powershell -File build-offline.ps1",
                   "gradleOffline":  "gradle --offline build | gradle --offline logicTest",
                   "outputJar":  "build/libs/horde_soldiers-2.0.1.jar",
-                  "tests":  "com.nox.horde_soldiers.test.LogicTests - 130 checks, headless bootstrap via reflection"
+                  "tests":  "com.nox.hzcode.test.LogicTests - 130 checks, headless bootstrap via reflection"
               },
     "commands":  [
                      "/horde start",

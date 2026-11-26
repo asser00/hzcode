@@ -119,8 +119,8 @@ $entries += [ordered]@{ path = '.testenv/workspace/'; role = 'test-env'; descrip
 if ($missing.Count -gt 0) { Write-Output "MISSING DESCRIPTIONS: $($missing -join ', ')"; exit 1 }
 $manifest = [ordered]@{
   project = [ordered]@{ name='horde-soldiers-v2'; modId='horde_soldiers'; version='2.0.1'; minecraft='1.20.1'; forge='47.4.28'; java=17; loader='javafml'; hardDependency='tacz 1.2.0 (mandatory in mods.toml)'; principle='ONE BRAIN. MULTIPLE BODIES. SHARED STRATEGY. INDEPENDENT EXECUTION.'; summary='Forge mod: hordes of zombies/soldiers/scavengers/terrorists; one strategic HordeController per horde, followers read shared state + formation slots.' }
-  entryPoints = @('com.nox.horde_soldiers.HordeSoldiersMod (@Mod horde_soldiers)')
-  build = [ordered]@{ offline='powershell -File build-offline.ps1'; gradleOffline='gradle --offline build | gradle --offline logicTest'; outputJar='build/libs/horde_soldiers-2.0.1.jar'; tests='com.nox.horde_soldiers.test.LogicTests - 130 checks, headless bootstrap via reflection' }
+  entryPoints = @('com.nox.hzcode.HordeSoldiersMod (@Mod horde_soldiers)')
+  build = [ordered]@{ offline='powershell -File build-offline.ps1'; gradleOffline='gradle --offline build | gradle --offline logicTest'; outputJar='build/libs/horde_soldiers-2.0.1.jar'; tests='com.nox.hzcode.test.LogicTests - 130 checks, headless bootstrap via reflection' }
   commands = @('/horde start','/horde stop','/horde status','/horde list','/horde wave [count]','/horde spawn <soldier|scavenger|zombie|terrorist> [count]','/horde order <9 orders> [radius]','/horde dismiss [radius]')
   configGroups = @('general','horde','zombie','soldier','scavenger','terrorist','factions','taming')
   dataFlow = 'EntityJoinLevel -> HordeRegistry.attach -> HordeController (leader strategy, throttled) -> HordeData (persisted via HordeSavedData + HordeLink NBT) -> follower goals -> guarded world edits (LootTransfer, ZombieBreachRules)'
@@ -132,7 +132,7 @@ $md = @('# FILE MAP - horde-soldiers-v2','','Machine-readable version: `docs/man
 foreach ($e in $entries) { $md += '| `' + $e.path + '` | ' + $e.role + ' | ' + ($e.description -replace '\|','\|') + ' |' }
 $md += ''; $md += '## Processing notes'; $md += ''
 $md += '- Compile: all of `src/main/java` together against `build/cp` + `build/jarsbak` + `libs/tacz-1.20.1-1.2.0.jar` (`build-offline.ps1`, `javac --release 17`).'
-$md += '- Tests: `com.nox.horde_soldiers.test.LogicTests` (111 checks) with main+test classes and same jars on classpath.'
+$md += '- Tests: `com.nox.hzcode.test.LogicTests` (111 checks) with main+test classes and same jars on classpath.'
 $md += '- Deploy/test: `dist/apocalypssia/install.ps1` -> Apocalypssia instance (real one on E:, or the `.testenv/workspace` copy); see `docs/TEST_ENV.md`.'
 $md += '- `mods.toml`/`pack.mcmeta` contain `${...}` placeholders expanded by Gradle `processResources`; `build-offline.ps1` expands them with fixed values when jarring.'
 [System.IO.File]::WriteAllText((Join-Path $root 'docs/FILE_MAP.md'), ($md -join [string][char]10), (New-Object System.Text.UTF8Encoding($false)))

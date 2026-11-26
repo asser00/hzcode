@@ -166,6 +166,6 @@ Machine-readable version: `docs/manifest.json` (regenerate with `tools/gen_docs.
 ## Processing notes
 
 - Compile: all of `src/main/java` together against `build/cp` + `build/jarsbak` + `libs/tacz-1.20.1-1.2.0.jar` (`build-offline.ps1`, `javac --release 17`).
-- Tests: `com.nox.horde_soldiers.test.LogicTests` (111 checks) with main+test classes and same jars on classpath.
+- Tests: `com.nox.hzcode.test.LogicTests` (111 checks) with main+test classes and same jars on classpath.
 - Deploy/test: `dist/apocalypssia/install.ps1` -> Apocalypssia instance (real one on E:, or the `.testenv/workspace` copy); see `docs/TEST_ENV.md`.
 - `mods.toml`/`pack.mcmeta` contain `${...}` placeholders expanded by Gradle `processResources`; `build-offline.ps1` expands them with fixed values when jarring.

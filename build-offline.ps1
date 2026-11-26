@@ -65,7 +65,7 @@ $cpTest = (@($devJar) + $jars) -join ';'
 
 Write-Output "== running logic tests (against dev mojmap jar) =="
 $cpRun = (@($tout, $devJar) + $jars) -join ';'
-& $java -cp $cpRun com.nox.horde_soldiers.test.LogicTests 2>&1 | Select-String -Pattern 'PASS|FAIL|SKIP|LogicTests:'
+& $java -cp $cpRun com.nox.hzcode.test.LogicTests 2>&1 | Select-String -Pattern 'PASS|FAIL|SKIP|LogicTests:'
 
 # ---------- 2) production jar via cached Gradle (ForgeGradle reobfs mojmap->srg) ----------
 Write-Output "== production build via cached Gradle (reobf mojmap->srg) =="
@@ -92,7 +92,7 @@ Write-Output 'mods.toml: BOM-free'
 $mf = Get-Content (Join-Path $chk 'META-INF\MANIFEST.MF') -Raw
 if ($mf -match 'FMLModType') { throw 'production jar manifest contains FMLModType - forgespi 7.0.1 rejects Type.GAME (IllegalArgumentException during mod scan)' }
 Write-Output 'MANIFEST.MF: no FMLModType (forgespi 7.0.1 safe)'
-$bc = & $javac.Replace('javac.exe','javap.exe') -c -p (Join-Path $chk 'com\nox\horde_soldiers\entities\ModEntities.class')
+$bc = & $javac.Replace('javac.exe','javap.exe') -c -p (Join-Path $chk 'com\nox\hzcode\entities\ModEntities.class')
 if ($bc -match 'EntityType\$Builder\.m_20704_') { Write-Output 'reobf OK: EntityType$Builder.of remapped to SRG m_20704_' } else { throw 'production jar is NOT reobfuscated to SRG (m_20704_ missing) - do not install' }
 if ($bc -match 'EntityType\$Builder\.of:') { throw 'production jar still contains mojmap call Builder.of - not reobfuscated' }
 $cls = (& $jarTool tf $prodJar | Where-Object { $_ -match '\.class$' } | Measure-Object).Count
