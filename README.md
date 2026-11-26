@@ -96,7 +96,17 @@ gradle --offline logicTest    # logic unit tests (formation, factions, orders, e
 powershell -File build-offline.ps1   # fully offline javac build + jar + tests (no network needed)
 ```
 
-Output jar: `build/libs/horde_soldiers-2.0.1.jar`. Tests: `src/test/.../LogicTests.java`
+Local build artifacts (`build\cp\*.jar`, `libs\tacz-1.20.1-1.2.0.jar`) are NOT tracked in git.
+If they are missing (fresh clone / wiped build dir), restore them with:
+
+```
+powershell -File tools\restore-build-artifacts.ps1   # copies classpath jars from build_classpath.txt + the TACZ jar
+```
+
+Production jar (install THIS into the instance mods folder as `HZCODE.jar`):
+`build/libs/hzcode-2.0.1.jar` (SRG-reobfuscated by ForgeGradle; BOM-free mods.toml).
+Dev/test-only jar: `build/libs/horde_soldiers-2.0.1-dev.jar` (mojmap - do NOT install into the game).
+Tests: `src/test/.../LogicTests.java`
 (111 checks; the MC-dependent loot-transfer tests bootstrap the vanilla registries headlessly
 via reflection on `Bootstrap.isBootstrapped`, so they run without Forge/FML).
 

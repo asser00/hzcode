@@ -21,6 +21,15 @@ $fastutil = $jars | Where-Object { $_ -match 'fastutil-8.5.9.jar$' }
 $jars = @($fastutil) + ($jars | Where-Object { $_ -ne $fastutil })
 $cp = $jars -join ';'
 
+# ---------- preflight: local build artifacts (untracked, restorable) ----------
+if ($jars.Count -eq 0) {
+    throw "build\cp has no jars -> empty -cp makes javac fail with 'invalid flag'. Run: powershell -File tools\restore-build-artifacts.ps1"
+}
+if (-not (Test-Path (Join-Path $root 'libs\tacz-1.20.1-1.2.0.jar'))) {
+    throw "Missing libs\tacz-1.20.1-1.2.0.jar (Gradle needs the mapped TACZ jar). Run: powershell -File tools\restore-build-artifacts.ps1"
+}
+
+
 # ---------- 1) dev compile (mojmap) + dev jar + LogicTests ----------
 $srcs = Get-ChildItem -LiteralPath "$root\src\main\java" -Recurse -Filter '*.java' | Select-Object -ExpandProperty FullName
 $out = "$root\build\classes_final"
