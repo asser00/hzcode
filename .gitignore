@@ -1,0 +1,14 @@
+# Build outputs and local-only artifacts (restorable, never commit)
+build/
+.gradle/
+libs/
+logs/
+dist/
+.testenv/
+DELETED/
+out/
+
+# Binaries
+*.jar
+*.class
+*.log
