@@ -48,6 +48,12 @@ public final class FactionRelations {
         set(Faction.ZOMBIE, Faction.SCAVENGER, FactionRelation.HOSTILE);
         set(Faction.ZOMBIE, Faction.TERRORIST, FactionRelation.HOSTILE);
         set(Faction.ZOMBIE, Faction.MEDIC, FactionRelation.HOSTILE);
+        // Mercenaries: independent professionals - cooperate with soldiers/medics, hostile to zombies/terrorists
+        set(Faction.MERCENARY, Faction.MERCENARY, FactionRelation.ALLIED);
+        set(Faction.MERCENARY, Faction.SOLDIER, FactionRelation.ALLIED);
+        set(Faction.MERCENARY, Faction.MEDIC, FactionRelation.ALLIED);
+        set(Faction.MERCENARY, Faction.ZOMBIE, FactionRelation.HOSTILE);
+        set(Faction.MERCENARY, Faction.TERRORIST, FactionRelation.HOSTILE);
     }
 
     private FactionRelations() {}

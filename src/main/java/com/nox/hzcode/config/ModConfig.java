@@ -110,6 +110,8 @@ public final class ModConfig {
         public final ForgeConfigSpec.BooleanValue mercenaryNaturalSpawn;
         public final ForgeConfigSpec.ConfigValue<List<? extends String>> terroristWeaponClasses;
         public final ForgeConfigSpec.ConfigValue<List<? extends String>> mercenaryWeaponClasses;
+        public final ForgeConfigSpec.ConfigValue<String> mercenaryPaymentItem;
+        public final ForgeConfigSpec.IntValue mercenaryPaymentCount;
 
         Common(ForgeConfigSpec.Builder b) {
             b.comment("General").push("general");
@@ -221,6 +223,8 @@ public final class ModConfig {
             mercenaryNaturalSpawn = b.comment("Mercenaries spawn naturally in the overworld").define("naturalSpawn", false);
             mercenaryWeaponClasses = b.comment("TACZ weapon classes mercenaries draw from (professional: dmr/sniper)").defineList("weaponClasses",
                     List.of("dmr", "sniper"), v -> v instanceof String);
+            mercenaryPaymentItem = b.comment("Item required as payment to hire a mercenary").define("paymentItem", "minecraft:diamond");
+            mercenaryPaymentCount = b.comment("Amount of the payment item required to hire a mercenary").defineInRange("paymentCount", 2, 1, 64);
             b.pop();
 
             b.comment("Trading: give a scavenger/soldier one of these items to barter for a random reward").push("trading");

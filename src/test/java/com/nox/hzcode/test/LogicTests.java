@@ -477,5 +477,11 @@ public final class LogicTests {
         check(WeaponStocker.gunsOfClasses(List.of("bogus")).isEmpty(), "guns.unknownClassEmpty");
         check(WeaponStocker.AMMO_IDS.size() == 25, "ammo.total25");
         check(WeaponStocker.AMMO_IDS.contains("762x39"), "ammo.762x39");
+        check(FactionRelations.isAllied(Faction.MERCENARY, Faction.SOLDIER), "faction.mercenaryAlliedSoldier");
+        check(FactionRelations.isAllied(Faction.MERCENARY, Faction.MEDIC), "faction.mercenaryAlliedMedic");
+        check(FactionRelations.isHostile(Faction.MERCENARY, Faction.ZOMBIE), "faction.mercenaryHostileZombie");
+        check(FactionRelations.isHostile(Faction.ZOMBIE, Faction.MERCENARY), "faction.zombieHostileMercenary");
+        check(FactionRelations.isHostile(Faction.MERCENARY, Faction.TERRORIST), "faction.mercenaryHostileTerrorist");
+        check(HordeType.MERCENARY.faction() == Faction.MERCENARY, "type.mercenaryFaction");
     }
 }

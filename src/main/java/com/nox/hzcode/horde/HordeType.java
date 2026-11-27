@@ -9,7 +9,7 @@ public enum HordeType {
     ZOMBIE(Faction.ZOMBIE),
     TERRORIST(Faction.TERRORIST),
     MEDIC(Faction.MEDIC),
-    MERCENARY(Faction.SOLDIER);
+    MERCENARY(Faction.MERCENARY);
 
     private final Faction faction;
 

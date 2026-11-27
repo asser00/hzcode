@@ -28,6 +28,12 @@ public final class ModItems {
     public static final RegistryObject<Item> SUPPORT_CALL_3 = ITEMS.register("support_call_3", () -> new SupportCallItem(3));
     public static final RegistryObject<Item> SUPPORT_CALL_4 = ITEMS.register("support_call_4", () -> new SupportCallItem(4));
     public static final RegistryObject<Item> SUPPORT_CALL_5 = ITEMS.register("support_call_5", () -> new SupportCallItem(5));
+    public static final RegistryObject<Item> MERCENARY_CONTRACT =
+            ITEMS.register("mercenary_contract", () -> new Item(new Item.Properties().stacksTo(16)));
+    public static final RegistryObject<Item> SCRAP_METAL =
+            ITEMS.register("scrap_metal", () -> new Item(new Item.Properties().stacksTo(64)));
+    public static final RegistryObject<Item> WEAPON_PART =
+            ITEMS.register("weapon_part", () -> new Item(new Item.Properties().stacksTo(64)));
 
     public static final RegistryObject<CreativeModeTab> TAB = TABS.register("hzcode", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup.hzcode"))
@@ -45,6 +51,9 @@ public final class ModItems {
                 output.accept(SUPPORT_CALL_3.get());
                 output.accept(SUPPORT_CALL_4.get());
                 output.accept(SUPPORT_CALL_5.get());
+                output.accept(MERCENARY_CONTRACT.get());
+                output.accept(SCRAP_METAL.get());
+                output.accept(WEAPON_PART.get());
             })
             .build());
 

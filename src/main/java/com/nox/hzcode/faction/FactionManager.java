@@ -41,6 +41,7 @@ public final class FactionManager {
     /** Returns the faction of an entity, or null for entities outside the faction system. */
     public static Faction getFactionOf(Entity entity) {
         if (entity instanceof Player) return Faction.PLAYER;
+        if (entity instanceof SoldierEntity s && s.isMercenary()) return Faction.MERCENARY;
         if (entity instanceof SoldierEntity) return Faction.SOLDIER;
         if (entity instanceof ScavengerEntity) return Faction.SCAVENGER;
         if (entity instanceof TerroristEntity) return Faction.TERRORIST;

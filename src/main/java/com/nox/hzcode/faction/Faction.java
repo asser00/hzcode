@@ -7,5 +7,6 @@ public enum Faction {
     ZOMBIE,
     SCAVENGER,
     TERRORIST,
-    MEDIC
+    MEDIC,
+    MERCENARY
 }

@@ -102,5 +102,9 @@
   "config.hzcode.hordeSize": "Horde Size",
   "config.hzcode.healInterval": "Heal Interval (ticks)",
   "config.hzcode.healAmount": "Heal Amount",
-  "config.hzcode.healRadius": "Heal Radius"
+  "config.hzcode.healRadius": "Heal Radius",
+  "item.hzcode.mercenary_contract": "Mercenary Contract",
+  "item.hzcode.scrap_metal": "Scrap Metal",
+  "item.hzcode.weapon_part": "Weapon Part",
+  "entity.hzcode.soldier.mercenary": "Mercenary"
 }

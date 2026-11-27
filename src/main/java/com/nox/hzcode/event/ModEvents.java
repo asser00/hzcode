@@ -183,11 +183,60 @@ public final class ModEvents {
         boolean tameItemValid = tameItem != null && tameItem != net.minecraft.world.item.Items.AIR;
         boolean holdingTameItem = tameItemValid && !held.isEmpty() && held.getItem() == tameItem;
 
-        // --- mercenaries cannot be tamed, only traded with ---
+        // --- mercenaries: hired with a contract + payment (taming treat does not work on them) ---
         if (mob instanceof com.nox.hzcode.entities.SoldierEntity ms && ms.isMercenary()) {
-            player.displayClientMessage(Component.literal("This mercenary cannot be tamed - barter with it instead (bread, iron, gold...)."), true);
-            event.setCanceled(true);
-            event.setCancellationResult(InteractionResult.SUCCESS);
+            net.minecraft.world.item.Item contractItem = BuiltInRegistries.ITEM.get(new ResourceLocation("hzcode:mercenary_contract"));
+            if (holdingTameItem) {
+                player.displayClientMessage(Component.literal("Mercenaries don't take treats - hire them with a Mercenary Contract + payment."), true);
+                event.setCanceled(true);
+                event.setCancellationResult(InteractionResult.SUCCESS);
+                return;
+            }
+            if (contractItem != null && !held.isEmpty() && held.getItem() == contractItem) {
+                event.setCanceled(true);
+                event.setCancellationResult(InteractionResult.SUCCESS);
+                if (mob.isTamed()) {
+                    player.displayClientMessage(Component.literal("This mercenary is already under your contract."), true);
+                    return;
+                }
+                net.minecraft.world.item.Item payItem = BuiltInRegistries.ITEM.get(new ResourceLocation(cfg.mercenaryPaymentItem.get()));
+                boolean payValid = payItem != null && payItem != net.minecraft.world.item.Items.AIR;
+                int need = Math.max(1, cfg.mercenaryPaymentCount.get());
+                int have = 0;
+                if (payValid) {
+                    for (net.minecraft.world.item.ItemStack s : player.getInventory().items) {
+                        if (!s.isEmpty() && s.getItem() == payItem) have += s.getCount();
+                    }
+                }
+                String payName = payValid ? payItem.getName(new net.minecraft.world.item.ItemStack(payItem)).getString() : cfg.mercenaryPaymentItem.get();
+                if (!payValid || have < need) {
+                    player.displayClientMessage(Component.literal("Hiring costs " + need + " x " + payName + " - you have " + have + "."), true);
+                    return;
+                }
+                if (!player.getAbilities().instabuild) {
+                    int left = need;
+                    for (net.minecraft.world.item.ItemStack s : player.getInventory().items) {
+                        if (left <= 0) break;
+                        if (!s.isEmpty() && s.getItem() == payItem) {
+                            int take = Math.min(left, s.getCount());
+                            s.shrink(take);
+                            left -= take;
+                        }
+                    }
+                    held.shrink(1);
+                }
+                mob.setTamed(player.getUUID());
+                if (mob.getHordeId() != null && mob.level() instanceof ServerLevel serverLevel) {
+                    HordeRegistry.get(serverLevel).detach(mob.getUUID());
+                    mob.setHordeId(null);
+                }
+                if (mob.level() instanceof ServerLevel serverLevel) {
+                    serverLevel.sendParticles(ParticleTypes.HEART, mob.getX(), mob.getY() + 1.0, mob.getZ(), 7, 0.3, 0.3, 0.3, 0.1);
+                }
+                player.displayClientMessage(Component.literal("Mercenary hired for " + need + " x " + payName + "! It will follow and defend you. Sneak + empty hand to release."), true);
+                return;
+            }
+            player.displayClientMessage(Component.literal("Hire this mercenary with a Mercenary Contract + " + Math.max(1, cfg.mercenaryPaymentCount.get()) + " x payment (barter also works)."), true);
             return;
         }
 
