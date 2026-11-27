@@ -104,6 +104,8 @@ public final class ModConfig {
         public final ForgeConfigSpec.IntValue medicHealInterval;
         public final ForgeConfigSpec.DoubleValue medicHealAmount;
         public final ForgeConfigSpec.DoubleValue medicHealRadius;
+        public final ForgeConfigSpec.IntValue mercenaryHordeSize;
+        public final ForgeConfigSpec.BooleanValue mercenaryNaturalSpawn;
 
         Common(ForgeConfigSpec.Builder b) {
             b.comment("General").push("general");
@@ -204,6 +206,11 @@ public final class ModConfig {
             medicHealInterval = b.comment("Ticks between heal pulses").defineInRange("healInterval", 40, 5, 1200);
             medicHealAmount = b.comment("Health restored per pulse").defineInRange("healAmount", 2.0, 0.5, 100.0);
             medicHealRadius = b.comment("Heal aura radius (blocks)").defineInRange("healRadius", 10.0, 2.0, 64.0);
+            b.pop();
+
+            b.comment("Mercenaries (trade-only soldiers; cannot be tamed)").push("mercenary");
+            mercenaryHordeSize = b.comment("Mercenary group size when spawned as a horde").defineInRange("hordeSize", 3, 1, 12);
+            mercenaryNaturalSpawn = b.comment("Mercenaries spawn naturally in the overworld").define("naturalSpawn", false);
             b.pop();
 
             b.comment("Trading: give a scavenger/soldier one of these items to barter for a random reward").push("trading");

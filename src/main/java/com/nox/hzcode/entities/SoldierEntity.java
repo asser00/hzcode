@@ -23,13 +23,29 @@ import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
 
 /**
  * Soldier: armed horde member. Receives a real TACZ firearm plus ammunition through
  * {@link TacZAdapter#equipSoldier} and fights with {@link SoldierTaczCombatGoal}.
  */
 public class SoldierEntity extends AbstractHordeMob {
+    private static final EntityDataAccessor<Boolean> MERCENARY =
+            SynchedEntityData.defineId(SoldierEntity.class, EntityDataSerializers.BOOLEAN);
     private boolean taczEquipped;
+
+    @Override
+    protected void defineSynchedData() {
+        super.defineSynchedData();
+        this.entityData.define(MERCENARY, false);
+    }
+
+    /** Mercenaries are trade-only soldiers: they can never be tamed. Synched so the client renderer can pick mercenary skins. */
+    public boolean isMercenary() { return this.entityData.get(MERCENARY); }
+
+    public void setMercenary(boolean mercenary) { this.entityData.set(MERCENARY, mercenary); }
 
     public SoldierEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
@@ -109,11 +125,13 @@ public class SoldierEntity extends AbstractHordeMob {
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         tag.putBoolean("TacZEquipped", taczEquipped);
+        tag.putBoolean("Mercenary", isMercenary());
     }
 
     @Override
     public void readAdditionalSaveData(CompoundTag tag) {
         super.readAdditionalSaveData(tag);
         taczEquipped = tag.getBoolean("TacZEquipped");
+        setMercenary(tag.getBoolean("Mercenary"));
     }
 }

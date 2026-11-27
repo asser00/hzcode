@@ -33,6 +33,7 @@ public final class HordeSpawner {
             case ZOMBIE -> cfg.zombieHordeSize.get();
             case TERRORIST -> cfg.terroristHordeSize.get();
             case MEDIC -> cfg.medicHordeSize.get();
+            case MERCENARY -> cfg.mercenaryHordeSize.get();
         };
     }
 
@@ -47,6 +48,7 @@ public final class HordeSpawner {
             case ZOMBIE -> ModEntities.ZOMBIE.get();
             case TERRORIST -> ModEntities.TERRORIST.get();
             case MEDIC -> ModEntities.MEDIC.get();
+            case MERCENARY -> ModEntities.SOLDIER.get(); // mercenaries are soldier entities flagged at spawn
         };
     }
 
@@ -74,6 +76,7 @@ public final class HordeSpawner {
                 if (mob instanceof IHordeEntity hordeEntity) {
                     hordeEntity.setHordeId(hordeId); // set BEFORE adding so attach() joins this horde
                 }
+                if (type == HordeType.MERCENARY && mob instanceof SoldierEntity s) s.setMercenary(true);
                 level.addFreshEntity(mob);
                 spawned.add(mob);
             } catch (Exception e) {
@@ -98,7 +101,7 @@ public final class HordeSpawner {
     /** Faction-specific initialization applied once at horde creation. */
     private static void initFaction(HordeController controller, HordeType type) {
         switch (type) {
-            case SOLDIER -> equipSoldiers(controller);
+            case SOLDIER, MERCENARY -> equipSoldiers(controller);
             case TERRORIST -> {
                 if (ModConfig.COMMON.terroristsUseGuns.get()) equipSoldiers(controller);
             }

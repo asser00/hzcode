@@ -15,6 +15,8 @@ import com.nox.hzcode.horde.HordeState;
 import com.nox.hzcode.horde.HordeType;
 import com.nox.hzcode.horde.LeaderElection;
 import com.nox.hzcode.horde.LootTransfer;
+import com.nox.hzcode.entities.Variant;
+import com.nox.hzcode.equipment.WeaponStocker;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -52,6 +54,7 @@ public final class LogicTests {
         testLootTransfer();
         testWeaponStocker();
         testSkinVariant();
+        testVariants();
         System.out.println("===================================");
         System.out.println("LogicTests: " + passed + " passed, " + failed + " failed");
         if (failed > 0) System.exit(1);
@@ -213,7 +216,7 @@ public final class LogicTests {
         check(HordeType.parse(" Soldier ", null) == HordeType.SOLDIER, "type.parseTrimmed");
         check(HordeType.parse("bogus", HordeType.SCAVENGER) == HordeType.SCAVENGER, "type.parseFallback");
         check(HordeType.parse(null, HordeType.TERRORIST) == HordeType.TERRORIST, "type.parseNullFallback");
-        check(HordeType.values().length == 5, "type.fiveTypes");
+        check(HordeType.values().length == 6, "type.sixTypes");
         check(HordeType.SCAVENGER.faction() == Faction.SCAVENGER, "type.factionMapping");
     }
 
@@ -448,5 +451,19 @@ public final class LogicTests {
         int total = 0;
         for (int i = 0; i < handler.getSlots(); i++) total += handler.getStackInSlot(i).getCount();
         return total;
+    }
+
+    private static void testVariants() {
+        UUID id = UUID.randomUUID();
+        check(Variant.isFemale(id, false) == Variant.isFemale(id, false), "variant.deterministic");
+        check(Variant.isFemale(id, true), "variant.forcedFemale");
+        int females = 0;
+        for (int i = 0; i < 2000; i++) if (Variant.isFemale(UUID.randomUUID(), false)) females++;
+        check(females > 800 && females < 1200, "variant.roughlyBalanced");
+        check(WeaponStocker.isRifle("ak47"), "rifle.ak47");
+        check(WeaponStocker.isRifle("mcx_spear_lt"), "rifle.mcxSpearLt");
+        check(!WeaponStocker.isRifle("glock_17"), "rifle.pistolRejected");
+        check(!WeaponStocker.isRifle("minigun"), "rifle.minigunRejected");
+        check(HordeType.parse("mercenary", null) == HordeType.MERCENARY, "type.mercenaryParse");
     }
 }

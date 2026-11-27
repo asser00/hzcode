@@ -34,7 +34,7 @@ public final class WeaponStocker {
     private static final Set<String> RIFLE_IDS = Set.of(
             "ak47", "ak12", "ak74m", "m4a1", "m16a1", "m16a4", "aug", "g36k", "hk416d", "hk_g3",
             "fn_fal", "hcar", "mk18", "qbz_95", "qbz_191", "qr_24", "scar_h", "scar_l",
-            "type_81", "urgi");
+            "type_81", "urgi", "mcx_spear_lt");
 
     private static final Pattern MELEE_PATH = Pattern.compile(
             ".*(sword|axe|katana|machete|knife|dagger|spear|trident|hammer|scimitar|cleaver|halberd|mace|club|staff|baton|tonfa|cutlass|rapier|sabre|saber|falchion|gladius|whip|scythe).*");

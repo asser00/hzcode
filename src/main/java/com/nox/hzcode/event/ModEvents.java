@@ -183,6 +183,14 @@ public final class ModEvents {
         boolean tameItemValid = tameItem != null && tameItem != net.minecraft.world.item.Items.AIR;
         boolean holdingTameItem = tameItemValid && !held.isEmpty() && held.getItem() == tameItem;
 
+        // --- mercenaries cannot be tamed, only traded with ---
+        if (mob instanceof com.nox.hzcode.entities.SoldierEntity ms && ms.isMercenary()) {
+            player.displayClientMessage(Component.literal("This mercenary cannot be tamed - barter with it instead (bread, iron, gold...)."), true);
+            event.setCanceled(true);
+            event.setCancellationResult(InteractionResult.SUCCESS);
+            return;
+        }
+
         if (cfg.tamingEnabled.get() && holdingTameItem) {
             event.setCanceled(true);
             event.setCancellationResult(InteractionResult.SUCCESS);

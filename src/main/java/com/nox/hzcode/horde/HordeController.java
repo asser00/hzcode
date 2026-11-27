@@ -169,7 +169,7 @@ public class HordeController {
         LivingEntity leader = resolveLeader();
         if (leader == null) return; // leader chunk unloaded; followers hold position
         switch (data.getType()) {
-            case SOLDIER, TERRORIST -> makeSoldierDecisions(leader);
+            case SOLDIER, TERRORIST, MERCENARY -> makeSoldierDecisions(leader);
             case SCAVENGER -> makeScavengerDecisions(leader);
             case ZOMBIE -> makeZombieDecisions(leader);
         }

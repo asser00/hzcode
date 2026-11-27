@@ -52,6 +52,7 @@ public final class ModSpawnPlacements {
             case SCAVENGER -> cfg.scavengerNaturalSpawn.get();
             case TERRORIST -> cfg.terroristNaturalSpawn.get();
             case MEDIC -> cfg.medicNaturalSpawn.get();
+            case MERCENARY -> cfg.mercenaryNaturalSpawn.get();
         };
     }
 
