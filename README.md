@@ -1,4 +1,4 @@
-# Horde Soldiers v2 (`horde-soldiers-v2`)
+# HZCODE - Horde Soldiers (Forge 1.20.1)
 
 Minecraft 1.20.1 / Forge 47.x / Java 17. Primary integration: TACZ 1.2.0 (hard dependency).
 Mod id: `hzcode` (installed jar file name: `HZCODE.jar`). This is a **new working copy with a different project name**; the
@@ -107,7 +107,7 @@ Production jar (install THIS into the instance mods folder as `HZCODE.jar`):
 `build/libs/hzcode-2.0.1.jar` (SRG-reobfuscated by ForgeGradle; BOM-free mods.toml).
 Dev/test-only jar: `build/libs/horde_soldiers-2.0.1-dev.jar` (mojmap - do NOT install into the game).
 Tests: `src/test/.../LogicTests.java`
-(111 checks; the MC-dependent loot-transfer tests bootstrap the vanilla registries headlessly
+(168 checks as of 2026-11-27; the MC-dependent loot-transfer tests bootstrap the vanilla registries headlessly
 via reflection on `Bootstrap.isBootstrapped`, so they run without Forge/FML).
 
 ## Verification status
@@ -117,6 +117,15 @@ IN-GAME VERIFIED / BENCHMARKED). In-game verification requires launching a Forge
 this environment has no network, so runtime verification is limited to what can run offline.
 
 
+## Status (2026-11-27) & docs
+- Mod id `hzcode` (jar `HZCODE.jar`), package `com.nox.hzcode`. HEAD `2ee3741`, tests 168/168, build green.
+- Features: horde engine, factions (incl. MERCENARY), medic seek-and-heal + self-defense melee, TACZ soldier/terrorist/mercenary
+  loadouts (verified ids), scavenger melee + work system, barter trading, taming, weapon swap, male/female variants with
+  owner skin pools (lazy-loaded, reload-safe), mercenary contract recruitment, war horn + support calls, horde_camp structure.
+- NOT yet implemented: squad commands (FOLLOW/STAY/DEFEND UI) - Phase 2, see `PLAN.md`; voice/sound system; see `PLAN.md` backlog.
+- Docs: `PROJECT.md` (identity/boundaries/deps/gotchas), `PLAN.md` (active plan + backlog), `RECAP.md` (session history),
+  `.handoff.md` (resume guide), `docs/` (FEATURES-*, SKIN-ASSETS.md, TEST_ENV.md).
+
 ## GitHub
-This project is mirrored as a git repo. Remote (set it to your repo before pushing):
-`https://github.com/NOXROV/hzcode.git` - to publish: create the repo on GitHub (or `gh repo create NOXROV/hzcode --public --source .`), then `git push -u origin master`.
+Remote: `https://github.com/asser00/hzcode.git` - branch `main` is in sync; plain `git push` works (upstream set).
+Do not commit build artifacts or secrets (`.gitignore` covers `build/`, `libs/` jars, logs).

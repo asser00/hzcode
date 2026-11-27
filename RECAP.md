@@ -133,3 +133,27 @@ wild), soldier weapon swap via right-click (gun/melee swap, ammo into inventory)
 (hzcode:medic, medic skin pool, heals allies), tamed scavengers go to work for 5 min and return with
 loot (persisted SavedData), zombies hostile to all factions + vanilla zombie textures in the pool.
 Boot verified 23:59 (0 FATAL, title screen). Tests 142/142. Docs: docs/FEATURES-2026-11-25.md.
+
+## Session 2026-11-27 (overnight mission + audit + handoff docs) - HEAD 2ee3741
+
+Commits: cc700f8 (.gitignore), 6a63daf (build preflight guard + tools/restore-build-artifacts.ps1),
+4a9a775 (repackage com.nox.horde_soldiers -> com.nox.hzcode; fixes JPMS ResolutionException when HZHER coexists),
+a55b18a (male/female variants via UUID-deterministic Variant + slim model; 12 owner skins from Downloads\SKINS;
+mercenary type; verified mcx_spear_lt rifle id), a3e0163 (P0 fixes: TACZ 1.2.0 NBT weapon ids via base item +
+setGunId/setAmmoId with verified 70-gun/25-ammo tables; terrorist+mercenary class-based loadouts; lazy skin pools +
+reload invalidation; medic faction mapping bug fixed + seek-and-heal HealAlliesGoal + medic self-defense melee;
+loot table invalid tacz ids removed), 2ee3741 (Faction.MERCENARY + contract/diamond recruitment + scrap_metal/
+weapon_part/mercenary_contract items + recipe + tab).
+
+Verification: LogicTests 168/168 (run 2026-11-27). build-offline.ps1 green (142 classes, BUILD SUCCESSFUL,
+jar self-checks OK). Boot-verified in Apocalypssia-4.94 repeatedly: hzcode 2.0.1 loads, title screen, 0
+hzcode-attributable FATAL/crashes. The 11:06 crash was parcool (external, no com.nox frames).
+
+Owner feedback received: medic healing WORKS in-game (verified). Skins and weapons were broken -> root-caused
+and fixed in a3e0163 (lazy pools; TACZ NBT ids) - in-game re-confirmation pending.
+
+Audit (2026-11-27, read-only): completion matrix produced; NOT implemented: orders UI (Phase 2), voice/sound
+system + manifest, mercenary world presence/distinct AI, materials progression, branding note, overnight report.
+Multiplayer never tested. See PLAN.md for the Phase 2 spec and prioritized backlog; .handoff.md for resume steps.
+
+Security: GitHub PAT exposed in Desktop txt file - revoke it.
