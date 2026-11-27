@@ -180,22 +180,58 @@ public final class TacZAdapter {
         return isTaczAvailable() && !stack.isEmpty() && IAmmo.getIAmmoOrNull(stack) != null;
     }
 
-    /** Creates a TACZ gun stack from a config id; EMPTY if the id is not a registered gun. */
-    public static ItemStack createGunStack(String id) {
-        if (id == null || id.isEmpty() || !isTaczAvailable()) return ItemStack.EMPTY;
-        Item item = BuiltInRegistries.ITEM.get(new ResourceLocation(id));
-        if (item == null) return ItemStack.EMPTY;
-        ItemStack stack = new ItemStack(item);
-        return IGun.getIGunOrNull(stack) != null ? stack : ItemStack.EMPTY;
+    // TACZ 1.2.0 uses ONE base gun item (tacz:modern_kinetic_gun) and ONE base ammo item (tacz:ammo);
+    // the concrete gun/ammo is stored in NBT via IGun.setGunId / IAmmo.setAmmoId as tacz:<index id>.
+    private static Item gunBaseItem;
+    private static Item ammoBaseItem;
+    private static boolean basesResolved;
+
+    private static void resolveBases() {
+        if (basesResolved) return;
+        basesResolved = true;
+        for (Item item : BuiltInRegistries.ITEM) {
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
+            if (id == null || !"tacz".equals(id.getNamespace())) continue;
+            ItemStack probe = new ItemStack(item);
+            if (gunBaseItem == null && IGun.getIGunOrNull(probe) != null) gunBaseItem = item;
+            if (ammoBaseItem == null && IAmmo.getIAmmoOrNull(probe) != null) ammoBaseItem = item;
+        }
     }
 
-    /** Creates a TACZ ammo stack from a config id; EMPTY if unknown. */
+    /** Normalizes a gun/ammo index id: accepts "ak47" or "tacz:ak47" and returns "tacz:ak47". */
+    private static String normalizeIndexId(String id) {
+        if (id == null || id.isEmpty()) return null;
+        return id.contains(":") ? id : "tacz:" + id;
+    }
+
+    /** Creates a TACZ gun stack for a gun index id (e.g. "tacz:ak47"); EMPTY if TACZ/base item/id invalid. */
+    public static ItemStack createGunStack(String id) {
+        String nid = normalizeIndexId(id);
+        if (nid == null || !isTaczAvailable()) return ItemStack.EMPTY;
+        resolveBases();
+        if (gunBaseItem == null) return ItemStack.EMPTY;
+        ResourceLocation gunId;
+        try { gunId = new ResourceLocation(nid); } catch (Exception e) { return ItemStack.EMPTY; }
+        ItemStack stack = new ItemStack(gunBaseItem);
+        IGun igun = IGun.getIGunOrNull(stack);
+        if (igun == null) return ItemStack.EMPTY;
+        igun.setGunId(stack, gunId);
+        return stack;
+    }
+
+    /** Creates a TACZ ammo stack for an ammo index id (e.g. "tacz:762x39"); EMPTY if unknown. */
     public static ItemStack createAmmoStack(String id, int count) {
-        if (id == null || id.isEmpty() || !isTaczAvailable()) return ItemStack.EMPTY;
-        Item item = BuiltInRegistries.ITEM.get(new ResourceLocation(id));
-        if (item == null) return ItemStack.EMPTY;
-        ItemStack stack = new ItemStack(item, Math.max(1, count));
-        return IAmmo.getIAmmoOrNull(stack) != null ? stack : ItemStack.EMPTY;
+        String nid = normalizeIndexId(id);
+        if (nid == null || !isTaczAvailable()) return ItemStack.EMPTY;
+        resolveBases();
+        if (ammoBaseItem == null) return ItemStack.EMPTY;
+        ResourceLocation ammoId;
+        try { ammoId = new ResourceLocation(nid); } catch (Exception e) { return ItemStack.EMPTY; }
+        ItemStack stack = new ItemStack(ammoBaseItem, Math.max(1, count));
+        IAmmo ammo = IAmmo.getIAmmoOrNull(stack);
+        if (ammo == null) return ItemStack.EMPTY;
+        ammo.setAmmoId(stack, ammoId);
+        return stack;
     }
 
     public static FireMode getFireMode(LivingEntity entity) {

@@ -2,6 +2,7 @@ package com.nox.hzcode.faction;
 
 import com.nox.hzcode.config.ModConfig;
 import com.nox.hzcode.entities.ITameableHorde;
+import com.nox.hzcode.entities.MedicEntity;
 import com.nox.hzcode.entities.ScavengerEntity;
 import com.nox.hzcode.entities.SoldierEntity;
 import com.nox.hzcode.entities.TerroristEntity;
@@ -43,6 +44,7 @@ public final class FactionManager {
         if (entity instanceof SoldierEntity) return Faction.SOLDIER;
         if (entity instanceof ScavengerEntity) return Faction.SCAVENGER;
         if (entity instanceof TerroristEntity) return Faction.TERRORIST;
+        if (entity instanceof MedicEntity) return Faction.MEDIC;
         if (entity instanceof ZombieEntity || entity instanceof Zombie) return Faction.ZOMBIE;
         return null;
     }

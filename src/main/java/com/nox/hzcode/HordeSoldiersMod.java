@@ -30,7 +30,12 @@ public class HordeSoldiersMod {
         modBus.addListener(ModEntities::onBuildCreativeModeTab);
         modBus.addListener(ModEvents::onConfigEvent);
         modBus.addListener(ModEvents::onRegisterCapabilities);
-        if (net.minecraftforge.fml.loading.FMLEnvironment.dist == net.minecraftforge.api.distmarker.Dist.CLIENT) { modBus.addListener(ClientModEvents::registerEntityRenderers); }
+        if (net.minecraftforge.fml.loading.FMLEnvironment.dist == net.minecraftforge.api.distmarker.Dist.CLIENT) {
+            modBus.addListener(ClientModEvents::registerEntityRenderers);
+            // re-resolve skin pools after every resource reload (F3+T / pack changes)
+            modBus.addListener((net.minecraftforge.event.AddReloadListenerEvent e) ->
+                    e.addListener(new ClientModEvents.PoolInvalidator()));
+        }
         MinecraftForge.EVENT_BUS.addListener(ModEvents::onRegisterCommands);
         MinecraftForge.EVENT_BUS.addListener(ModEvents::onEntityJoinLevel);
         MinecraftForge.EVENT_BUS.addListener(ModEvents::onLivingDeath);

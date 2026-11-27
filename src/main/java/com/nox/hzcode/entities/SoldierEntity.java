@@ -89,7 +89,11 @@ public class SoldierEntity extends AbstractHordeMob {
         if (!TacZAdapter.isTaczAvailable()) return;
         ModConfig.Common cfg = ModConfig.COMMON;
         net.minecraft.world.item.ItemStack gun;
-        if (cfg.soldiersRandomWeapons.get()) {
+        if (isMercenary()) {
+            // mercenaries get their own professional loadout (configured classes), distinct from soldiers
+            gun = WeaponStocker.randomTaczGunFrom(this.level().random, WeaponStocker.gunsOfClasses(cfg.mercenaryWeaponClasses.get()));
+            if (gun.isEmpty()) gun = TacZAdapter.createGunStack(cfg.soldierGun.get());
+        } else if (cfg.soldiersRandomWeapons.get()) {
             gun = WeaponStocker.randomTaczGun(this.level().random, true); // soldiers get random rifles
             if (gun.isEmpty()) gun = TacZAdapter.createGunStack(cfg.soldierGun.get());
         } else {

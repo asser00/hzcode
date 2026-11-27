@@ -171,6 +171,12 @@ public final class LogicTests {
         check(FactionRelations.isAllied(Faction.ZOMBIE, Faction.ZOMBIE), "faction.selfAllied");
         check(FactionRelations.isHostile(Faction.SOLDIER, Faction.TERRORIST), "faction.soldierHostileToTerrorist");
         check(FactionRelations.get(Faction.PLAYER, Faction.SCAVENGER) == FactionRelation.NEUTRAL, "faction.playerScavengerDefaultNeutral");
+        check(FactionRelations.isAllied(Faction.MEDIC, Faction.PLAYER), "faction.medicAlliedPlayer");
+        check(FactionRelations.isAllied(Faction.MEDIC, Faction.SOLDIER), "faction.medicAlliedSoldier");
+        check(FactionRelations.isAllied(Faction.MEDIC, Faction.SCAVENGER), "faction.medicAlliedScavenger");
+        check(FactionRelations.isHostile(Faction.MEDIC, Faction.ZOMBIE), "faction.medicHostileZombie");
+        check(FactionRelations.isHostile(Faction.MEDIC, Faction.TERRORIST), "faction.medicHostileTerrorist");
+        check(FactionRelations.isHostile(Faction.ZOMBIE, Faction.MEDIC), "faction.zombieHostileMedic");
         check(FactionRelations.get(Faction.PLAYER, Faction.TERRORIST) == FactionRelation.HOSTILE, "faction.playerTerroristDefaultHostile");
         check(!FactionRelations.isHostile(Faction.SCAVENGER, Faction.SCAVENGER), "faction.scavengerNotHostileSelf");
 
@@ -465,5 +471,11 @@ public final class LogicTests {
         check(!WeaponStocker.isRifle("glock_17"), "rifle.pistolRejected");
         check(!WeaponStocker.isRifle("minigun"), "rifle.minigunRejected");
         check(HordeType.parse("mercenary", null) == HordeType.MERCENARY, "type.mercenaryParse");
+        check(WeaponStocker.ALL_GUN_IDS.size() == 70, "guns.total70");
+        check(WeaponStocker.GUNS_BY_CLASS.get("rifle").size() == 21, "guns.rifle21");
+        check(WeaponStocker.gunsOfClasses(List.of("smg", "shotgun")).size() == 13, "guns.classUnion");
+        check(WeaponStocker.gunsOfClasses(List.of("bogus")).isEmpty(), "guns.unknownClassEmpty");
+        check(WeaponStocker.AMMO_IDS.size() == 25, "ammo.total25");
+        check(WeaponStocker.AMMO_IDS.contains("762x39"), "ammo.762x39");
     }
 }

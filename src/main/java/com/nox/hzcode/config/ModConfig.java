@@ -104,8 +104,12 @@ public final class ModConfig {
         public final ForgeConfigSpec.IntValue medicHealInterval;
         public final ForgeConfigSpec.DoubleValue medicHealAmount;
         public final ForgeConfigSpec.DoubleValue medicHealRadius;
+        public final ForgeConfigSpec.DoubleValue medicSeekRange;
+        public final ForgeConfigSpec.DoubleValue medicHealRange;
         public final ForgeConfigSpec.IntValue mercenaryHordeSize;
         public final ForgeConfigSpec.BooleanValue mercenaryNaturalSpawn;
+        public final ForgeConfigSpec.ConfigValue<List<? extends String>> terroristWeaponClasses;
+        public final ForgeConfigSpec.ConfigValue<List<? extends String>> mercenaryWeaponClasses;
 
         Common(ForgeConfigSpec.Builder b) {
             b.comment("General").push("general");
@@ -182,7 +186,9 @@ public final class ModConfig {
             terroristsHostileToSoldiers = b.comment("Terrorists are hostile to soldiers (legacy key)").define("terroristsHostileToAllies", true);
             terroristsUseGuns = b.define("terroristsUseGuns", true);
             terroristNaturalSpawn = b.comment("Terrorists spawn naturally in the overworld").define("naturalSpawn", true);
-            terroristsRandomWeapons = b.comment("Each terrorist gets a random TACZ gun (any class) instead of the fixed soldierGun").define("randomWeapons", true);
+            terroristsRandomWeapons = b.comment("Each terrorist gets a random TACZ gun instead of the fixed soldierGun").define("randomWeapons", true);
+            terroristWeaponClasses = b.comment("TACZ weapon classes terrorists draw from (rifle,dmr,sniper,smg,shotgun,pistol,mg,rpg)").defineList("weaponClasses",
+                    List.of("smg", "shotgun", "pistol"), v -> v instanceof String);
             b.pop();
 
             b.comment("Centralized faction relations: ALLIED, NEUTRAL or HOSTILE").push("factions");
@@ -205,12 +211,16 @@ public final class ModConfig {
             medicHordeSize = b.comment("Medic horde size when spawned as a horde").defineInRange("hordeSize", 2, 1, 12);
             medicHealInterval = b.comment("Ticks between heal pulses").defineInRange("healInterval", 40, 5, 1200);
             medicHealAmount = b.comment("Health restored per pulse").defineInRange("healAmount", 2.0, 0.5, 100.0);
-            medicHealRadius = b.comment("Heal aura radius (blocks)").defineInRange("healRadius", 10.0, 2.0, 64.0);
+            medicHealRadius = b.comment("Friendly pulse radius around the medic when it heals (blocks)").defineInRange("healRadius", 10.0, 2.0, 64.0);
+            medicSeekRange = b.comment("How far the medic searches for an injured ally (blocks)").defineInRange("seekRange", 24.0, 4.0, 64.0);
+            medicHealRange = b.comment("Distance at which the medic can heal its target (blocks)").defineInRange("healRange", 3.0, 1.0, 16.0);
             b.pop();
 
             b.comment("Mercenaries (trade-only soldiers; cannot be tamed)").push("mercenary");
             mercenaryHordeSize = b.comment("Mercenary group size when spawned as a horde").defineInRange("hordeSize", 3, 1, 12);
             mercenaryNaturalSpawn = b.comment("Mercenaries spawn naturally in the overworld").define("naturalSpawn", false);
+            mercenaryWeaponClasses = b.comment("TACZ weapon classes mercenaries draw from (professional: dmr/sniper)").defineList("weaponClasses",
+                    List.of("dmr", "sniper"), v -> v instanceof String);
             b.pop();
 
             b.comment("Trading: give a scavenger/soldier one of these items to barter for a random reward").push("trading");
@@ -218,7 +228,7 @@ public final class ModConfig {
             tradeGiveItems = b.comment("Items accepted in a trade (consumed)").defineList("giveItems",
                     List.of("minecraft:bread", "minecraft:cooked_beef", "minecraft:apple", "minecraft:iron_ingot", "minecraft:gold_ingot"), v -> v instanceof String);
             tradeReceiveItems = b.comment("Possible rewards (one random item is given)").defineList("receiveItems",
-                    List.of("minecraft:arrow", "minecraft:torch", "minecraft:bread", "minecraft:iron_ingot", "minecraft:string", "minecraft:leather", "tacz:762x39", "tacz:556x45", "tacz:9mm", "minecraft:golden_apple"), v -> v instanceof String);
+                    List.of("minecraft:arrow", "minecraft:torch", "minecraft:bread", "minecraft:iron_ingot", "minecraft:string", "minecraft:leather", "minecraft:emerald", "hzcode:scrap_metal", "hzcode:weapon_part", "minecraft:golden_apple"), v -> v instanceof String);
             b.pop();
         }
     }

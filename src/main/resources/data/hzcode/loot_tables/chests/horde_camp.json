@@ -11,8 +11,6 @@
         {"type": "minecraft:item", "name": "minecraft:leather", "weight": 5, "functions": [{"function": "minecraft:set_count", "count": {"min": 1, "max": 4}}]},
         {"type": "minecraft:item", "name": "minecraft:arrow", "weight": 6, "functions": [{"function": "minecraft:set_count", "count": {"min": 4, "max": 12}}]},
         {"type": "minecraft:item", "name": "minecraft:torch", "weight": 8, "functions": [{"function": "minecraft:set_count", "count": {"min": 2, "max": 6}}]},
-        {"type": "minecraft:item", "name": "tacz:762x39", "weight": 4, "functions": [{"function": "minecraft:set_count", "count": {"min": 10, "max": 30}}]},
-        {"type": "minecraft:item", "name": "tacz:556x45", "weight": 3, "functions": [{"function": "minecraft:set_count", "count": {"min": 10, "max": 30}}]},
         {"type": "minecraft:item", "name": "minecraft:name_tag", "weight": 2},
         {"type": "minecraft:item", "name": "minecraft:golden_apple", "weight": 1}
       ]

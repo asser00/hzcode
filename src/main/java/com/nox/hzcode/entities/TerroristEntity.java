@@ -66,7 +66,8 @@ public class TerroristEntity extends AbstractHordeMob {
         ModConfig.Common cfg = ModConfig.COMMON;
         net.minecraft.world.item.ItemStack gun;
         if (cfg.terroristsRandomWeapons.get()) {
-            gun = WeaponStocker.randomTaczGun(this.level().random, false); // terrorists get any random TACZ gun
+            // distinct loadout: terrorists draw from their own configured weapon classes (smg/shotgun/pistol)
+            gun = WeaponStocker.randomTaczGunFrom(this.level().random, WeaponStocker.gunsOfClasses(cfg.terroristWeaponClasses.get()));
             if (gun.isEmpty()) gun = TacZAdapter.createGunStack(cfg.soldierGun.get());
         } else {
             gun = TacZAdapter.createGunStack(cfg.soldierGun.get());

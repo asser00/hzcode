@@ -29,19 +29,51 @@ import net.minecraft.world.item.TridentItem;
 public final class WeaponStocker {
     private WeaponStocker() {}
 
-    /** TACZ gun ids treated as rifles (item id path under the tacz namespace). */
-    /** Exact rifle-class TACZ gun ids (from tacz index/guns/* "type":"rifle"). */
-    private static final Set<String> RIFLE_IDS = Set.of(
-            "ak47", "ak12", "ak74m", "m4a1", "m16a1", "m16a4", "aug", "g36k", "hk416d", "hk_g3",
-            "fn_fal", "hcar", "mk18", "qbz_95", "qbz_191", "qr_24", "scar_h", "scar_l",
-            "type_81", "urgi", "mcx_spear_lt");
+    /**
+     * Verified TACZ 1.2.0 gun index ids by class, read from the installed
+     * tacz-forge-1.20.1-1.2.0.jar (data/tacz/index/guns/<id>.json "type" field). 70 guns total.
+     */
+    public static final java.util.Map<String, java.util.Set<String>> GUNS_BY_CLASS = java.util.Map.of(
+            "rifle", Set.of("ak12", "ak47", "ak74m", "aug", "fn_fal", "g36k", "hcar", "hk416d", "hk_g3",
+                    "m16a1", "m16a4", "m4a1", "mcx_spear_lt", "mk18", "qbz_191", "qbz_95", "qr_24",
+                    "scar_h", "scar_l", "type_81", "urgi"),
+            "dmr", Set.of("m1866", "mk14", "scar_mk20", "sks_tactical", "spr15hb"),
+            "sniper", Set.of("ai_awp", "hm50b", "kar98", "m107", "m700", "m95", "mrad", "springfield1873", "svd"),
+            "smg", Set.of("hk_mp5a5", "hk_mp7a1", "p90", "ump45", "uzi", "vector45"),
+            "shotgun", Set.of("aa12", "db_long", "db_short", "m1014", "m1897", "m870", "spas_12"),
+            "pistol", Set.of("b93r", "cz75", "deagle", "deagle_golden", "glock_17", "hk_mk23", "lonetrail",
+                    "m1911", "m9a4", "p320", "rhino357", "taurus500", "taurus943", "tec_9", "timeless50"),
+            "mg", Set.of("fn_evolys", "m249", "minigun", "pkm", "rpk"),
+            "rpg", Set.of("m320", "rpg7"));
+
+    /** All verified TACZ gun index ids (paths, without namespace). */
+    public static final java.util.Set<String> ALL_GUN_IDS = GUNS_BY_CLASS.values().stream()
+            .flatMap(java.util.Set::stream).collect(java.util.stream.Collectors.toUnmodifiableSet());
+
+    /** Verified TACZ 1.2.0 ammo index ids (from data/tacz/index/ammo/<id>.json). */
+    public static final java.util.Set<String> AMMO_IDS = Set.of(
+            "12g", "22wmr", "300blk", "308", "30_06", "338", "357mag", "40mm", "45_70", "45acp", "46x30",
+            "500mag", "50ae", "50bmg", "545x39", "556x45", "57x28", "58x42", "68x51fury", "762x25",
+            "762x39", "762x54", "792x57", "9mm", "rpg_rocket");
+
+    /** Union of gun ids for the given weapon classes (unknown classes are ignored). */
+    public static java.util.Set<String> gunsOfClasses(java.util.List<? extends String> classes) {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        if (classes != null) {
+            for (String cls : classes) {
+                java.util.Set<String> ids = GUNS_BY_CLASS.get(cls == null ? "" : cls.toLowerCase(java.util.Locale.ROOT));
+                if (ids != null) out.addAll(ids);
+            }
+        }
+        return out;
+    }
+
+    public static boolean isRifle(String gunPath) {
+        return gunPath != null && GUNS_BY_CLASS.get("rifle").contains(gunPath);
+    }
 
     private static final Pattern MELEE_PATH = Pattern.compile(
             ".*(sword|axe|katana|machete|knife|dagger|spear|trident|hammer|scimitar|cleaver|halberd|mace|club|staff|baton|tonfa|cutlass|rapier|sabre|saber|falchion|gladius|whip|scythe).*");
-
-    public static boolean isRifle(String gunPath) {
-        return gunPath != null && RIFLE_IDS.contains(gunPath);
-    }
 
     /** Pure, testable: does an item id path look like a melee weapon? */
     public static boolean isMeleePath(String path) {
@@ -73,32 +105,31 @@ public final class WeaponStocker {
         return new ItemStack(candidates.get(random.nextInt(candidates.size())));
     }
 
-    /** Picks a random registered TACZ gun; riflesOnly restricts to rifle-class ids. EMPTY if none/TACZ absent. */
+    /** Picks a random verified TACZ gun; riflesOnly restricts to rifle-class ids. EMPTY if none/TACZ absent. */
     public static ItemStack randomTaczGun(RandomSource random, boolean riflesOnly) {
-        if (!TacZAdapter.isTaczAvailable()) return ItemStack.EMPTY;
-        List<Item> guns = new ArrayList<>();
-        for (Item item : BuiltInRegistries.ITEM) {
-            ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
-            if (!"tacz".equals(id.getNamespace())) continue;
-            if (IGun.getIGunOrNull(new ItemStack(item)) == null) continue;
-            if (riflesOnly && !isRifle(id.getPath())) continue;
-            guns.add(item);
-        }
-        if (guns.isEmpty()) return ItemStack.EMPTY;
-        return new ItemStack(guns.get(random.nextInt(guns.size())));
+        return randomTaczGunFrom(random, riflesOnly ? GUNS_BY_CLASS.get("rifle") : ALL_GUN_IDS);
     }
 
-    /** Finds the TACZ ammo item that fits the given gun and returns a stack of it. EMPTY if none. */
+    /** Picks a random gun from the given index-id collection and materializes it via TacZAdapter. */
+    public static ItemStack randomTaczGunFrom(RandomSource random, java.util.Collection<String> ids) {
+        if (!TacZAdapter.isTaczAvailable() || ids == null || ids.isEmpty()) return ItemStack.EMPTY;
+        java.util.List<String> list = new java.util.ArrayList<>(ids);
+        for (int tries = 0; tries < 8; tries++) {
+            String id = list.get(random.nextInt(list.size()));
+            ItemStack gun = TacZAdapter.createGunStack("tacz:" + id);
+            if (!gun.isEmpty()) return gun;
+        }
+        return ItemStack.EMPTY;
+    }
+
+    /** Finds the TACZ ammo (by verified ammo id) that fits the given gun and returns a stack of it. EMPTY if none. */
     public static ItemStack matchingTaczAmmo(ItemStack gun, int count) {
         if (gun.isEmpty() || !TacZAdapter.isTaczAvailable()) return ItemStack.EMPTY;
-        for (Item item : BuiltInRegistries.ITEM) {
-            ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
-            if (!"tacz".equals(id.getNamespace())) continue;
-            ItemStack ammoStack = new ItemStack(item);
+        for (String ammoId : AMMO_IDS) {
+            ItemStack ammoStack = TacZAdapter.createAmmoStack("tacz:" + ammoId, Math.max(1, count));
+            if (ammoStack.isEmpty()) continue;
             IAmmo ammo = IAmmo.getIAmmoOrNull(ammoStack);
-            if (ammo != null && ammo.isAmmoOfGun(gun, ammoStack)) {
-                return new ItemStack(item, Math.max(1, count));
-            }
+            if (ammo != null && ammo.isAmmoOfGun(gun, ammoStack)) return ammoStack;
         }
         return ItemStack.EMPTY;
     }

@@ -7,7 +7,9 @@ import com.nox.hzcode.entities.SoldierEntity;
 import com.nox.hzcode.entities.Variant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.HumanoidModel;
@@ -26,47 +28,67 @@ import net.minecraftforge.client.event.EntityRenderersEvent;
  * Client-side renderers with male/female variants.
  *
  * Skin pools live under assets/hzcode/textures/entity/skins/<type>/ (general pool) with optional
- * gender sub-pools .../skins/<type>/male/ and .../skins/<type>/female/ (owner-provided skins).
- * Mercenary soldiers use the mercenary pools. Gender is deterministic from the entity UUID
- * (Variant; medics are always female), so server and client always agree and the look never
- * changes after a reload. Female entities render with the slim (Alex) player model, male with the
- * classic one (LivingEntityRenderer.render reads the model field directly, so the renderer swaps
- * it around the super call). Pools are resolved through the client ResourceManager (reliable for
- * mod-jar assets in production) and cached once; render type stays entityCutoutNoCull so skins
- * are never see-through.
+ * gender sub-pools .../skins/<type>/male/ and .../skins/<type>/female/. Mercenary soldiers use the
+ * mercenary pools. Gender is deterministic from the entity UUID (Variant; medics are always
+ * female), so server and client always agree and the look never changes after a reload. Female
+ * entities render with the slim (Alex) player model, male with the classic one.
+ *
+ * Pools are resolved LAZILY on the render thread (not at class-init / RegisterRenderers time, when
+ * the ResourceManager does not contain mod packs yet) and re-resolved after every resource reload
+ * (invalidatePools via AddReloadListenerEvent). Render type stays entityCutoutNoCull so skins are
+ * never see-through.
  */
 public final class ClientModEvents {
-    private static final ResourceLocation[] ZOMBIE_SKINS = skins("zombie", "textures/entity/zombie.png");
-    private static final ResourceLocation[] SOLDIER_SKINS = skins("soldier", "textures/entity/soldier_biker.png");
-    private static final ResourceLocation[] SCAVENGER_SKINS = skins("scavenger", "textures/entity/scavenger.png");
-    private static final ResourceLocation[] TERRORIST_SKINS = skins("terrorist", "textures/entity/terrorist.png");
-    private static final ResourceLocation[] MEDIC_SKINS = skins("medic", "textures/entity/soldier_medic.png");
-    private static final ResourceLocation[] MERCENARY_SKINS = skins("mercenary", "textures/entity/soldier_biker.png");
-
-    private static final ResourceLocation[] SOLDIER_M = genderPool("soldier", "male", SOLDIER_SKINS);
-    private static final ResourceLocation[] SOLDIER_F = genderPool("soldier", "female", SOLDIER_SKINS);
-    private static final ResourceLocation[] SCAVENGER_M = genderPool("scavenger", "male", SCAVENGER_SKINS);
-    private static final ResourceLocation[] SCAVENGER_F = genderPool("scavenger", "female", SCAVENGER_SKINS);
-    private static final ResourceLocation[] TERRORIST_M = genderPool("terrorist", "male", TERRORIST_SKINS);
-    private static final ResourceLocation[] TERRORIST_F = genderPool("terrorist", "female", TERRORIST_SKINS);
-    private static final ResourceLocation[] MEDIC_M = genderPool("medic", "male", MEDIC_SKINS);
-    private static final ResourceLocation[] MEDIC_F = genderPool("medic", "female", MEDIC_SKINS);
-    private static final ResourceLocation[] MERCENARY_M = genderPool("mercenary", "male", MERCENARY_SKINS);
-    private static final ResourceLocation[] MERCENARY_F = genderPool("mercenary", "female", MERCENARY_SKINS);
+    private static final Map<String, ResourceLocation[]> GENERAL = new HashMap<>();
+    private static final Map<String, ResourceLocation[]> MALE = new HashMap<>();
+    private static final Map<String, ResourceLocation[]> FEMALE = new HashMap<>();
+    private static final Map<String, String> FALLBACK = Map.of(
+            "zombie", "textures/entity/zombie.png",
+            "soldier", "textures/entity/soldier_biker.png",
+            "scavenger", "textures/entity/scavenger.png",
+            "terrorist", "textures/entity/terrorist.png",
+            "medic", "textures/entity/soldier_medic.png",
+            "mercenary", "textures/entity/soldier_biker.png");
+    private static boolean poolsResolved;
 
     private ClientModEvents() {}
 
-    private static ResourceLocation[] skins(String type, String fallbackPath) {
+    /** Reload listener that drops the cached skin pools after every resource reload. */
+    public static class PoolInvalidator implements net.minecraft.server.packs.resources.ResourceManagerReloadListener {
+        @Override
+        public void onResourceManagerReload(net.minecraft.server.packs.resources.ResourceManager resourceManager) {
+            invalidatePools();
+        }
+    }
+
+    /** Called on resource reload: drop cached pools so they are re-read from the ResourceManager. */
+    public static void invalidatePools() {
+        poolsResolved = false;
+        GENERAL.clear();
+        MALE.clear();
+        FEMALE.clear();
+    }
+
+    private static void ensurePools() {
+        if (poolsResolved) return;
+        poolsResolved = true;
+        for (String type : FALLBACK.keySet()) {
+            GENERAL.put(type, listSkins("textures/entity/skins/" + type, type));
+            MALE.put(type, listSkins("textures/entity/skins/" + type + "/male", type));
+            FEMALE.put(type, listSkins("textures/entity/skins/" + type + "/female", type));
+        }
+    }
+
+    private static ResourceLocation[] listSkins(String dir, String type) {
         List<ResourceLocation> list = new ArrayList<>();
         try {
             var rm = Minecraft.getInstance().getResourceManager();
-            list.addAll(rm.listResources("textures/entity/skins/" + type,
-                    p -> p.getPath().endsWith(".png")).keySet());
+            list.addAll(rm.listResources(dir, p -> p.getPath().endsWith(".png")).keySet());
             list.sort(Comparator.comparing(ResourceLocation::getPath));
         } catch (Throwable ignored) {
             // fall through to the legacy single texture
         }
-        if (list.isEmpty()) list.add(new ResourceLocation(HordeSoldiersMod.MOD_ID, fallbackPath));
+        if (list.isEmpty()) list.add(new ResourceLocation(HordeSoldiersMod.MOD_ID, FALLBACK.get(type)));
         if (type.equals("zombie")) {
             // vanilla Minecraft zombie textures are always available - mix them into the pool
             list.add(new ResourceLocation("minecraft", "textures/entity/zombie/zombie.png"));
@@ -77,36 +99,24 @@ public final class ClientModEvents {
         return list.toArray(new ResourceLocation[0]);
     }
 
-    /** Gender sub-pool for a type; falls back to the general pool when the sub-pool is empty. */
-    private static ResourceLocation[] genderPool(String type, String gender, ResourceLocation[] general) {
-        List<ResourceLocation> list = new ArrayList<>();
-        try {
-            var rm = Minecraft.getInstance().getResourceManager();
-            list.addAll(rm.listResources("textures/entity/skins/" + type + "/" + gender,
-                    p -> p.getPath().endsWith(".png")).keySet());
-            list.sort(Comparator.comparing(ResourceLocation::getPath));
-        } catch (Throwable ignored) {
-            // fall back to the general pool
+    /** Resolves the skin for an entity: gender sub-pool if present, else the general pool. */
+    private static ResourceLocation pick(String type, Entity entity, boolean forceFemale) {
+        ensurePools();
+        boolean female = Variant.isFemale(entity.getUUID(), forceFemale);
+        ResourceLocation[] chosen = (female ? FEMALE : MALE).get(type);
+        if (chosen == null || chosen.length == 0) chosen = GENERAL.get(type);
+        if (chosen == null || chosen.length == 0) {
+            return new ResourceLocation(HordeSoldiersMod.MOD_ID, FALLBACK.getOrDefault(type, "textures/entity/zombie.png"));
         }
-        return list.isEmpty() ? general : list.toArray(new ResourceLocation[0]);
-    }
-
-    private static ResourceLocation pick(ResourceLocation[] general, ResourceLocation[] male,
-                                         ResourceLocation[] female, Entity entity, boolean forceFemale) {
-        ResourceLocation[] pool = Variant.isFemale(entity.getUUID(), forceFemale) ? female : male;
-        if (pool.length == 0) pool = general;
-        return pool[SkinVariant.index(entity.getUUID(), pool.length)];
+        return chosen[SkinVariant.index(entity.getUUID(), chosen.length)];
     }
 
     public static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.ZOMBIE.get(), HordeZombieRenderer::new);
         event.registerEntityRenderer(ModEntities.SOLDIER.get(), SoldierRenderer::new);
-        event.registerEntityRenderer(ModEntities.SCAVENGER.get(),
-                ctx -> new SkinHumanoidRenderer<>(ctx, SCAVENGER_SKINS, SCAVENGER_M, SCAVENGER_F, false));
-        event.registerEntityRenderer(ModEntities.TERRORIST.get(),
-                ctx -> new SkinHumanoidRenderer<>(ctx, TERRORIST_SKINS, TERRORIST_M, TERRORIST_F, false));
-        event.registerEntityRenderer(ModEntities.MEDIC.get(),
-                ctx -> new SkinHumanoidRenderer<>(ctx, MEDIC_SKINS, MEDIC_M, MEDIC_F, true)); // medics are female
+        event.registerEntityRenderer(ModEntities.SCAVENGER.get(), ctx -> new SkinHumanoidRenderer<>(ctx, "scavenger", false));
+        event.registerEntityRenderer(ModEntities.TERRORIST.get(), ctx -> new SkinHumanoidRenderer<>(ctx, "terrorist", false));
+        event.registerEntityRenderer(ModEntities.MEDIC.get(), ctx -> new SkinHumanoidRenderer<>(ctx, "medic", true)); // medics are female
     }
 
     public static class HordeZombieRenderer extends ZombieRenderer {
@@ -116,7 +126,7 @@ public final class ClientModEvents {
 
         @Override
         public ResourceLocation getTextureLocation(Zombie entity) {
-            return pick(ZOMBIE_SKINS, ZOMBIE_SKINS, ZOMBIE_SKINS, entity, false);
+            return pick("zombie", entity, false);
         }
     }
 
@@ -130,10 +140,7 @@ public final class ClientModEvents {
 
         @Override
         public ResourceLocation getTextureLocation(SoldierEntity entity) {
-            if (entity.isMercenary()) {
-                return pick(MERCENARY_SKINS, MERCENARY_M, MERCENARY_F, entity, false);
-            }
-            return pick(SOLDIER_SKINS, SOLDIER_M, SOLDIER_F, entity, false);
+            return pick(entity.isMercenary() ? "mercenary" : "soldier", entity, false);
         }
 
         @Override
@@ -150,25 +157,20 @@ public final class ClientModEvents {
     }
 
     public static class SkinHumanoidRenderer<T extends PathfinderMob> extends HumanoidMobRenderer<T, HumanoidModel<T>> {
-        private final ResourceLocation[] general;
-        private final ResourceLocation[] male;
-        private final ResourceLocation[] female;
+        private final String type;
         private final boolean forceFemale;
         private final HumanoidModel<T> slim;
 
-        public SkinHumanoidRenderer(EntityRendererProvider.Context context, ResourceLocation[] general,
-                                    ResourceLocation[] male, ResourceLocation[] female, boolean forceFemale) {
+        public SkinHumanoidRenderer(EntityRendererProvider.Context context, String type, boolean forceFemale) {
             super(context, new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER)), 0.5f);
             this.slim = new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_SLIM));
-            this.general = general;
-            this.male = male;
-            this.female = female;
+            this.type = type;
             this.forceFemale = forceFemale;
         }
 
         @Override
         public ResourceLocation getTextureLocation(T entity) {
-            return pick(general, male, female, entity, forceFemale);
+            return pick(type, entity, forceFemale);
         }
 
         @Override

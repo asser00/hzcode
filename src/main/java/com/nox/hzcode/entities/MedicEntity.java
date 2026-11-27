@@ -1,7 +1,9 @@
 package com.nox.hzcode.entities;
 
 import com.nox.hzcode.config.ModConfig;
+import com.nox.hzcode.entities.ai.goal.FactionTargetGoal;
 import com.nox.hzcode.entities.ai.goal.HealAlliesGoal;
+import com.nox.hzcode.equipment.WeaponStocker;
 import com.nox.hzcode.entities.ai.goal.HordeFollowerGoal;
 import com.nox.hzcode.entities.ai.goal.TamedFollowGoal;
 import com.nox.hzcode.horde.HordeType;
@@ -23,6 +25,8 @@ import net.minecraft.world.level.ServerLevelAccessor;
  * friendly entities around it (HealAlliesGoal). Wears the medic skin pool. Tameable like soldiers.
  */
 public class MedicEntity extends AbstractHordeMob {
+    private boolean meleeAssigned;
+
     public MedicEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
     }
@@ -36,12 +40,14 @@ public class MedicEntity extends AbstractHordeMob {
 
     @Override
     protected void registerGoals() {
-        this.goalSelector.addGoal(2, new HealAlliesGoal(this));
+        this.goalSelector.addGoal(2, new HealAlliesGoal(this)); // medical role first (MOVE+LOOK)
+        this.goalSelector.addGoal(3, new net.minecraft.world.entity.ai.goal.MeleeAttackGoal(this, 1.0, false)); // self-defense only
         this.goalSelector.addGoal(4, new TamedFollowGoal(this));
         this.goalSelector.addGoal(5, new HordeFollowerGoal(this));
         this.goalSelector.addGoal(7, new WaterAvoidingRandomStrollGoal(this, 0.8));
         this.goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 8.0f));
         this.goalSelector.addGoal(8, new RandomLookAroundGoal(this));
+        this.targetSelector.addGoal(1, new FactionTargetGoal<>(this, true));
     }
 
     @Override
@@ -49,7 +55,40 @@ public class MedicEntity extends AbstractHordeMob {
         net.minecraft.world.entity.SpawnGroupData result = super.finalizeSpawn(level, difficulty, spawnType, groupData, tag);
         var health = this.getAttribute(Attributes.MAX_HEALTH);
         if (health != null) health.setBaseValue(ModConfig.COMMON.medicHealth.get());
+        assignMeleeWeapon();
         return result;
+    }
+
+    /** Gives the medic a random melee weapon for self-defense (once). Called at spawn and lazily on load. */
+    private void assignMeleeWeapon() {
+        if (meleeAssigned) return;
+        if (!getMainHandItem().isEmpty()) { meleeAssigned = true; return; }
+        if (!(this.level() instanceof net.minecraft.server.level.ServerLevel)) return;
+        net.minecraft.world.item.ItemStack weapon = WeaponStocker.randomMelee(this.level().random);
+        if (!weapon.isEmpty()) {
+            setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, weapon);
+            meleeAssigned = true;
+        }
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        if (!this.level().isClientSide && !meleeAssigned && this.tickCount % 20 == 0) {
+            assignMeleeWeapon();
+        }
+    }
+
+    @Override
+    public void addAdditionalSaveData(net.minecraft.nbt.CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        tag.putBoolean("MeleeAssigned", meleeAssigned);
+    }
+
+    @Override
+    public void readAdditionalSaveData(net.minecraft.nbt.CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        meleeAssigned = tag.getBoolean("MeleeAssigned");
     }
 
     @Override
